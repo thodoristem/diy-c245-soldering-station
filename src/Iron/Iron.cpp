@@ -14,9 +14,9 @@ Iron::Iron(
     this->buzzerPin = buzzerPin;
     this->invertedOutput = invertedOutput;
 
-    pinMode(this->heaterOutputPin, OUTPUT);
     pinMode(this->heaterTempPin, INPUT);
     pinMode(this->coldJunctionTempPin, INPUT);
+    pinMode(this->heaterOutputPin, OUTPUT);
     pinMode(this->buzzerPin, OUTPUT);
 }
 
@@ -30,11 +30,11 @@ void Iron::init()
 
     // this->loadSettings();
     this->tempCoefficientCalculation();
-    this->setSelectedTemp(this->settings.initTemp);
+    this->setTargetTemp(this->settings.initTemp);
     this->setOutputRange(this->settings.minOutputPCT, this->settings.maxOutputPCT);
     this->minTemp = this->settings.minTemp;
     this->maxTemp = this->settings.maxTemp;
-    this->selectedTemp = this->settings.initTemp;
+    this->targetTemp = this->settings.initTemp;
 
     this->heaterOutputOff();
 
@@ -43,7 +43,7 @@ void Iron::init()
     this->pid = new QuickPID(
         &this->heaterTemp,
         &this->heaterOutput,
-        &this->selectedTemp,
+        &this->targetTemp,
         this->settings.kp,
         this->settings.ki,
         this->settings.kd,
@@ -202,25 +202,25 @@ void Iron::run()
     this->readTemp();
     this->heaterCheck();
 
-    if (!this->heaterTempReached && this->getHeaterTemp() >= this->getSelectedTemp())
-    {
-        this->playTone(SoundEvent::SOUND_TEMP_REACHED);
-        this->heaterTempReached = true;
-    }
-    else if (!this->heaterTempReachedRev && this->getHeaterTemp() <= this->getSelectedTemp())
-    {
-        this->playTone(SoundEvent::SOUND_TEMP_REACHED);
-        this->heaterTempReachedRev = true;
-    }
+    // if (!this->heaterTempReached && this->getHeaterTemp() >= this->getTargetTemp())
+    // {
+    //     this->playTone(SoundEvent::SOUND_TEMP_REACHED);
+    //     this->heaterTempReached = true;
+    // }
+    // else if (!this->heaterTempReachedRev && this->getHeaterTemp() <= this->getTargetTemp())
+    // {
+    //     this->playTone(SoundEvent::SOUND_TEMP_REACHED);
+    //     this->heaterTempReachedRev = true;
+    // }
 
-    if (this->getHeaterTemp() < this->getSelectedTemp() - 10)
-    {
-        this->heaterTempReached = false;
-    }
-    else if (this->getHeaterTemp() > this->getSelectedTemp() + 10)
-    {
-        this->heaterTempReachedRev = false;
-    }
+    // if (this->getHeaterTemp() < this->getTargetTemp() - 10)
+    // {
+    //     this->heaterTempReached = false;
+    // }
+    // else if (this->getHeaterTemp() > this->getTargetTemp() + 10)
+    // {
+    //     this->heaterTempReachedRev = false;
+    // }
 
     this->runPID();
 }
@@ -294,14 +294,9 @@ void Iron::toggle()
 {
     switch (this->getStatus())
     {
-    case STATUS_WARM_UP:
     case STATUS_HEATING:
         this->setStatus(STATUS_IDLE);
         this->playTone(SoundEvent::SOUND_HEATER_OFF);
-        break;
-    case STATUS_IDLE:
-        this->setStatus(STATUS_HEATING);
-        this->playTone(SoundEvent::SOUND_HEATER_ON);
         break;
     default:
         this->setStatus(STATUS_HEATING);
@@ -310,16 +305,31 @@ void Iron::toggle()
     }
 }
 
+void Iron::sleep()
+{
+    this->wakeUpTemp = this->getTargetTemp();
+    this->setTargetTemp(this->settings.sleepTemp);
+    this->setStatus(Iron::Status::STATUS_SLEEP);
+    this->playTone(SoundEvent::SOUND_HEATER_OFF);
+}
+
+void Iron::wakeUp()
+{
+    this->setTargetTemp(this->wakeUpTemp);
+    this->setStatus(Iron::STATUS_HEATING);
+    this->playTone(SoundEvent::SOUND_HEATER_ON);
+}
+
 void Iron::heaterCheck()
 {
-    float heaterOutputThreshhold = this->maxOutput;
-
-    if (this->getStatus() == STATUS_WARM_UP)
+    if (this->getHeaterTemp() > this->maxTemp)
     {
-        heaterOutputThreshhold = this->maxOutput / 2.0f;
+        this->status = STATUS_FAULT;
+        this->playTone(SoundEvent::SOUND_ERROR);
+        return;
     }
 
-    if (this->getHeaterOutput() < heaterOutputThreshhold)
+    if (this->getHeaterOutput() < this->maxOutput * 0.25f)
     {
         this->heaterCheckActive = false;
         return;
@@ -333,7 +343,7 @@ void Iron::heaterCheck()
         return;
     }
 
-    if (millis() - this->heaterCheckStart >= HEATER_CHECK_INTERVAL_SEC)
+    if (millis() - this->heaterCheckStart >= HEATER_CHECK_INTERVAL_MS)
     {
         float tempDiff = this->getHeaterTemp() - this->heaterCheckTemp;
 
@@ -373,66 +383,66 @@ void Iron::heaterOutputOff()
     }
 }
 
-void Iron::setSelectedTemp(float temp)
+void Iron::setTargetTemp(float temp)
 {
     if (temp <= this->minTemp)
     {
-        this->selectedTemp = this->minTemp;
+        this->targetTemp = this->minTemp;
     }
     else if (temp >= this->maxTemp)
     {
-        this->selectedTemp = this->maxTemp;
+        this->targetTemp = this->maxTemp;
     }
     else
     {
-        this->selectedTemp = temp;
+        this->targetTemp = temp;
     }
 }
 
-void Iron::increaseSelectedTemp()
+void Iron::increaseTargetTemp()
 {
-    this->increaseSelectedTemp(this->settings.tempSelectStep);
+    this->increaseTargetTemp(this->settings.tempSelectStep);
 }
 
-void Iron::increaseSelectedTemp(float step)
+void Iron::increaseTargetTemp(float step)
 {
-    if (this->selectedTemp < this->maxTemp)
+    if (this->targetTemp < this->maxTemp)
     {
-        this->selectedTemp += step;
+        this->targetTemp += step;
     }
     else
     {
-        this->selectedTemp = this->maxTemp;
+        this->targetTemp = this->maxTemp;
     }
     this->playTone(SoundEvent::SOUND_TEMP_CHANGE);
 }
 
-void Iron::decreaseSelectedTemp()
+void Iron::decreaseTargetTemp()
 {
-    this->decreaseSelectedTemp(this->settings.tempSelectStep);
+    this->decreaseTargetTemp(this->settings.tempSelectStep);
 }
 
-void Iron::decreaseSelectedTemp(float step)
+void Iron::decreaseTargetTemp(float step)
 {
-    if (this->selectedTemp > this->minTemp)
+    if (this->targetTemp > this->minTemp)
     {
-        this->selectedTemp -= step;
+        this->targetTemp -= step;
     }
     else
     {
-        this->selectedTemp = this->minTemp;
+        this->targetTemp = this->minTemp;
     }
     this->playTone(SoundEvent::SOUND_TEMP_CHANGE);
 }
 
-float Iron::getSelectedTemp()
+float Iron::getTargetTemp()
 {
-    return this->selectedTemp;
+    return this->targetTemp;
 }
 
-float Iron::getSelectedTempPct()
+float Iron::getTargetTempPct()
 {
-    return this->selectedTemp / this->maxTemp * 100.0f;
+    return this->targetTemp / this->maxTemp * 100.0f;
 }
 
 float Iron::getHeaterTemp()

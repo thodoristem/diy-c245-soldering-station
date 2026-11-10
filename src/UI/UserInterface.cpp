@@ -53,13 +53,13 @@ void UserInterface::onPrev()
     switch (this->selectedLevel)
     {
     case HOME:
-        this->iron->decreaseSelectedTemp();
+        this->iron->decreaseTargetTemp();
         break;
     case OPTION_EDIT:
         switch (this->selectedView)
         {
         case PAGE_CAL_POINTS:
-            this->iron->decreaseSelectedTemp(1);
+            this->iron->decreaseTargetTemp(1);
             break;
         default:
             break;
@@ -76,13 +76,13 @@ void UserInterface::onNext()
     switch (this->selectedLevel)
     {
     case HOME:
-        this->iron->increaseSelectedTemp();
+        this->iron->increaseTargetTemp();
         break;
     case OPTION_EDIT:
         switch (this->selectedView)
         {
         case PAGE_CAL_POINTS:
-            this->iron->increaseSelectedTemp(1);
+            this->iron->increaseTargetTemp(1);
             break;
         default:
             break;
@@ -131,7 +131,7 @@ void UserInterface::onPress()
             case PAGE_CAL_POINTS:
                 this->selectedLevel = OPTION_EDIT;
                 this->iron->initCal();
-                this->iron->setSelectedTemp(this->iron->getCalPoint(this->selectedOption).tempC);
+                this->iron->setTargetTemp(this->iron->getCalPoint(this->selectedOption).tempC);
                 this->iron->setStatus(Iron::Status::STATUS_HEATING);
                 break;
             default:
@@ -148,7 +148,7 @@ void UserInterface::onPress()
             this->iron->setCalPointMv(this->selectedOption, this->iron->getHeaterTempMV());
             // this->iron->tempCoefficientCalculation();
             this->iron->setStatus(Iron::Status::STATUS_IDLE);
-            this->iron->setSelectedTemp(this->iron->getSettings().initTemp);
+            this->iron->setTargetTemp(this->iron->getSettings().initTemp);
             break;
         default:
             break;
@@ -170,6 +170,16 @@ void UserInterface::onLongPress()
         this->selectView(View::DASHBOARD);
         break;
     }
+}
+
+void UserInterface::onSleepSense()
+{
+    this->iron->sleep();
+}
+
+void UserInterface::onWakeSense()
+{
+    this->iron->wakeUp();
 }
 
 void UserInterface::prevSelection()
@@ -219,53 +229,26 @@ void UserInterface::showDashboard()
     char ironSetTemp[10];
     char ironOutput[10];
 
-    snprintf(ironTemp, sizeof ironTemp, "%03d", (int)this->iron->getHeaterTemp());
-    snprintf(ironSetTemp, sizeof ironSetTemp, "%03d\u00B0C", (int)this->iron->getSelectedTemp());
-    snprintf(ironOutput, sizeof ironOutput, "%3d%%", (int)this->iron->getHeaterOutputPct());
-
-    this->lcd->setFont(u8g2_font_spleen5x8_mf);
-    this->lcd->setFontPosBottom();
-
-    // this->lcd->setCursor(10, 10);
-    // this->lcd->print(this->iron->getHeaterTempMV(), 4);
-
-    // this->lcd->setCursor(10, 20);
-    // this->lcd->print(this->iron->getSettings().coeffs[0], 4);
-
-    // this->lcd->setCursor(10, 30);
-    // this->lcd->print(this->iron->getSettings().coeffs[1], 4);
-
-    // this->lcd->setCursor(10, 40);
-    // this->lcd->print(this->iron->getSettings().coeffs[2], 4);
-
-    // this->lcd->setCursor(10, 50);
-    // this->lcd->print(this->iron->getSettings().coeffs[3], 4);
-
-    // this->lcd->setCursor(10, 30);
-    // this->lcd->print(this->iron->getSettings().kp, 3);
-
-    // this->lcd->setCursor(10, 40);
-    // this->lcd->print(this->iron->getSettings().ki, 3);
-
-    // this->lcd->setCursor(10, 50);
-    // this->lcd->print(this->iron->getSettings().kd, 3);
-
-    this->drawStatus();
+    sprintf(ironTemp, "%03d", (int)this->iron->getHeaterTemp());
+    sprintf(ironSetTemp, "%03d\u00B0C", (int)this->iron->getTargetTemp());
+    sprintf(ironOutput, "%3d%%", (int)this->iron->getHeaterOutputPct());
 
     this->lcd->setFontPosTop();
     this->lcd->setFont(u8g2_font_spleen6x12_mf);
-    this->lcd->drawUTF8(11, 0, ironSetTemp);
-    this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 11, 0, ironOutput);
+    this->lcd->drawUTF8(14, 0, ironSetTemp);
+    this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 14, 0, ironOutput);
 
-    this->drawLoadingBar(0, 0, 5, this->lcd->getHeight(), this->iron->getSelectedTempPct());
-    this->drawLoadingBar(4, 0, 5, this->lcd->getHeight(), this->iron->getHeaterTempPct());
-    this->drawLoadingBar(this->lcd->getWidth() - 10, 0, 10, this->lcd->getHeight(), this->iron->getHeaterOutputPct());
+    this->drawLoadingBar(0, 0, 6, this->lcd->getHeight(), this->iron->getTargetTempPct());
+    this->drawLoadingBar(5, 0, 6, this->lcd->getHeight(), this->iron->getHeaterTempPct());
+    this->drawLoadingBar(this->lcd->getWidth() - 11, 0, 11, this->lcd->getHeight(), this->iron->getHeaterOutputPct());
 
     this->lcd->drawUTF8((this->lcd->getWidth() / 2 + 24), this->lcd->getHeight() / 2 - 14, "\u00B0C");
     this->lcd->setFont(u8g2_font_spleen16x32_mu);
     this->lcd->setFontPosCenter();
     this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(ironTemp)) / 2, this->lcd->getHeight() / 2);
     this->lcd->print(ironTemp);
+
+    this->drawStatus();
 }
 
 void UserInterface::showMenu()
@@ -340,7 +323,7 @@ void UserInterface::showCalPointsPage()
 
         if (this->selectedOption == i && this->selectedLevel == OPTION_EDIT)
         {
-            label += String(this->iron->getSelectedTemp() - this->iron->getCalPoint(i).tempC, 0);
+            label += String(this->iron->getTargetTemp() - this->iron->getCalPoint(i).tempC, 0);
         }
         else
         {
@@ -436,9 +419,6 @@ void UserInterface::drawStatus()
         break;
     case Iron::Status::STATUS_SLEEP:
         status = "SLEEP";
-        break;
-    case Iron::Status::STATUS_WARM_UP:
-        status = "WARM UP";
         break;
     }
 

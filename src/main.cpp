@@ -10,14 +10,15 @@
 #define HEATER_TEMP_PIN PB1
 #define BEEPER_PIN PA0
 
+#define HANDLE_SENSE_PIN PB12
 #define ENC_BUTTON_PIN PA1
 #define ENC_A_PIN PA2
 #define ENC_B_PIN PA3
 
-#define BTN_DEBOUNCE_MS 2
+#define BTN_DEBOUNCE_MS 0
 #define BTN_LONG_PRESS_MS 1000
 #define BTN_CLICK_MS 2
-#define BTN_PRESS_MS 100
+#define BTN_PRESS_MS 2
 
 Iron iron(
     HEATER_OUPUT_PIN,
@@ -35,19 +36,30 @@ U8G2_ST7920_128X64_F_SW_SPI lcd(
 
 UserInterface ui(&iron, &lcd);
 RotaryEncoder encoder(ENC_A_PIN, ENC_B_PIN, RotaryEncoder::LatchMode::FOUR3);
-OneButton button;
+OneButton encoderButton;
+OneButton sleepSense;
 
 void encoderISR()
 {
     encoder.tick();
 }
 
-void encoderLongPress()
+void onSleepSense()
+{
+    ui.onSleepSense();
+}
+
+void onWakeSense()
+{
+    ui.onWakeSense();
+}
+
+void onEncoderLongPress()
 {
     ui.onLongPress();
 }
 
-void encoderPress()
+void onEncoderPress()
 {
     ui.onPress();
 }
@@ -57,12 +69,18 @@ void setup()
     iron.init();
     ui.init();
 
-    button.setup(ENC_BUTTON_PIN, INPUT_PULLUP, true);
-    button.setDebounceMs(BTN_DEBOUNCE_MS);
-    button.setPressMs(BTN_LONG_PRESS_MS);
-    button.setClickMs(BTN_CLICK_MS);
-    button.attachLongPressStart(encoderLongPress);
-    button.attachClick(encoderPress);
+    sleepSense.setup(HANDLE_SENSE_PIN, INPUT, true);
+    sleepSense.setDebounceMs(BTN_DEBOUNCE_MS);
+    sleepSense.setPressMs(BTN_PRESS_MS);
+    sleepSense.attachDuringLongPress(onSleepSense);
+    sleepSense.attachLongPressStop(onWakeSense);
+
+    encoderButton.setup(ENC_BUTTON_PIN, INPUT_PULLUP, true);
+    encoderButton.setDebounceMs(BTN_DEBOUNCE_MS);
+    encoderButton.setPressMs(BTN_LONG_PRESS_MS);
+    encoderButton.setClickMs(BTN_CLICK_MS);
+    encoderButton.attachLongPressStart(onEncoderLongPress);
+    encoderButton.attachClick(onEncoderPress);
 
     attachInterrupt(digitalPinToInterrupt(ENC_A_PIN), encoderISR, CHANGE);
     attachInterrupt(digitalPinToInterrupt(ENC_B_PIN), encoderISR, CHANGE);
@@ -70,7 +88,8 @@ void setup()
 
 void loop()
 {
-    button.tick();
+    sleepSense.tick();
+    encoderButton.tick();
 
     switch (encoder.getDirection())
     {

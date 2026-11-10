@@ -25,9 +25,9 @@
 #define TEMP_MEASURE_SAMPLES 30
 #define TEMP_MEASURE_SETTLE_TIME_US 600
 
-#define PID_SAMPLE_TIME_US 100000UL
+#define PID_SAMPLE_TIME_US 10000UL
 
-#define HEATER_CHECK_INTERVAL_SEC 5000
+#define HEATER_CHECK_INTERVAL_MS 1000
 #define HEATER_CHECK_MIN_TEMP_RIZE 2.0f
 
 #define SETTINGS_MAGIC 0xC245A100UL
@@ -44,8 +44,7 @@ public:
         STATUS_IDLE,
         STATUS_HEATING,
         STATUS_FAULT,
-        STATUS_SLEEP,
-        STATUS_WARM_UP
+        STATUS_SLEEP
     };
 
     enum SoundEvent : uint8_t
@@ -75,7 +74,8 @@ private:
 
     bool invertedOutput = true;
 
-    float selectedTemp = 200.0;
+    float targetTemp = 200.0f;
+    float wakeUpTemp = 200.0f;
 
     float heaterOutput = 0.0f;
     float minOutput;
@@ -115,8 +115,12 @@ private:
         float maxOutputPCT = 75.0f;
         float tempSelectStep = 10.0f;
         float initTemp = 250.0f;
+        float sleepTemp = 150.0f;
 
         // PID Tuning
+        // float kp = 8.0f;
+        // float ki = 2.0f;
+        // float kd = 0.5f;
         float kp = 8.0f;
         float ki = 2.0f;
         float kd = 0.5f;
@@ -169,15 +173,17 @@ public:
     void setStatus(Status status);
     void playTone(SoundEvent event);
     void toggle();
-    void setSelectedTemp(float temp);
-    void increaseSelectedTemp();
-    void increaseSelectedTemp(float step);
-    void decreaseSelectedTemp();
-    void decreaseSelectedTemp(float step);
+    void sleep();
+    void wakeUp();
+    void setTargetTemp(float temp);
+    void increaseTargetTemp();
+    void increaseTargetTemp(float step);
+    void decreaseTargetTemp();
+    void decreaseTargetTemp(float step);
     float getHeaterOutput();
     float getHeaterOutputPct();
-    float getSelectedTemp();
-    float getSelectedTempPct();
+    float getTargetTemp();
+    float getTargetTempPct();
     float getHeaterTempMV();
     float getHeaterTemp();
     float getHeaterTempPct();
