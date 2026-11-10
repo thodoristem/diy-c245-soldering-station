@@ -6,7 +6,7 @@
 #include <U8g2lib.h>
 
 #define HEATER_OUPUT_PIN PA8
-#define COLD_JUNCTION_TEMP_PIN PB0
+#define COLD_JUNCTION_TEMP_PIN PB0 // Not used at the moment
 #define HEATER_TEMP_PIN PB1
 #define BEEPER_PIN PA0
 
@@ -14,9 +14,9 @@
 #define ENC_A_PIN PA2
 #define ENC_B_PIN PA3
 
-#define BTN_DEBOUNCE_MS 10
+#define BTN_DEBOUNCE_MS 2
 #define BTN_LONG_PRESS_MS 1000
-#define BTN_CLICK_MS 5
+#define BTN_CLICK_MS 2
 #define BTN_PRESS_MS 100
 
 Iron iron(
@@ -44,12 +44,12 @@ void encoderISR()
 
 void encoderLongPress()
 {
-    ui.onEncLongPress();
+    ui.onLongPress();
 }
 
 void encoderPress()
 {
-    ui.onEncPress();
+    ui.onPress();
 }
 
 void setup()
@@ -75,10 +75,10 @@ void loop()
     switch (encoder.getDirection())
     {
     case RotaryEncoder::Direction::CLOCKWISE:
-        ui.onEncPrev();
+        ui.onPrev();
         break;
     case RotaryEncoder::Direction::COUNTERCLOCKWISE:
-        ui.onEncNext();
+        ui.onNext();
         break;
     case RotaryEncoder::Direction::NOROTATION:
         break;

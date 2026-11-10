@@ -17,7 +17,7 @@
 #define ADC_BITS 12
 #define ADC_MAX 4095
 
-#define PWM_FREQ 21000
+#define PWM_FREQ 24000
 #define PWM_BITS 10
 #define PWM_MAX 1023
 
@@ -112,8 +112,8 @@ private:
         float minTemp = 100.0f;
         float maxTemp = 450.0f;
         float minOutputPCT = 0.0f;
-        float maxOutputPCT = 70.0f;
-        float selectStep = 10.0f;
+        float maxOutputPCT = 75.0f;
+        float tempSelectStep = 10.0f;
         float initTemp = 250.0f;
 
         // PID Tuning
@@ -143,10 +143,10 @@ private:
 
     Settings settings;
 
+    void runPID();
     void readTemp();
     void readColdJunctionTemp();
     void heaterCheck();
-    void runPID();
     void heaterOutputUpdate();
     void heaterOutputOff();
 
@@ -169,11 +169,11 @@ public:
     void setStatus(Status status);
     void playTone(SoundEvent event);
     void toggle();
-    void setSelectedTemp(float tempC);
+    void setSelectedTemp(float temp);
     void increaseSelectedTemp();
-    void increaseSelectedTemp(byte step);
+    void increaseSelectedTemp(float step);
     void decreaseSelectedTemp();
-    void decreaseSelectedTemp(byte step);
+    void decreaseSelectedTemp(float step);
     float getHeaterOutput();
     float getHeaterOutputPct();
     float getSelectedTemp();

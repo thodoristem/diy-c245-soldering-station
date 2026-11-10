@@ -4,9 +4,6 @@
 #include <Iron/Iron.h>
 #include <U8g2lib.h>
 
-#define BTN_DEBOUNCE_MS 10
-#define BTN_LONG_PRESS_MS 1000
-
 #define LCD_INTERVAL_MS 60
 
 class UserInterface
@@ -59,10 +56,10 @@ public:
     void init();
     void run();
 
-    void onEncPrev();
-    void onEncNext();
-    void onEncPress();
-    void onEncLongPress();
+    void onPrev();
+    void onNext();
+    void onPress();
+    void onLongPress();
 
     void selectView(View view);
 

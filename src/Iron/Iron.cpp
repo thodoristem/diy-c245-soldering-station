@@ -62,8 +62,8 @@ void Iron::init()
 void Iron::initCal()
 {
     this->setOutputRange(0.0f, 50.0f);
-    this->minTemp = 75.0f;
-    this->maxTemp = 475.0f;
+    this->minTemp = this->settings.minTemp - 25;
+    this->maxTemp = this->settings.maxTemp + 25;
 }
 
 void Iron::setOutputRange(float minPCT, float maxPCT)
@@ -373,28 +373,28 @@ void Iron::heaterOutputOff()
     }
 }
 
-void Iron::setSelectedTemp(float tempC)
+void Iron::setSelectedTemp(float temp)
 {
-    if (tempC < this->minTemp)
+    if (temp <= this->minTemp)
     {
         this->selectedTemp = this->minTemp;
     }
-    else if (tempC > this->maxTemp)
+    else if (temp >= this->maxTemp)
     {
         this->selectedTemp = this->maxTemp;
     }
     else
     {
-        this->selectedTemp = tempC;
+        this->selectedTemp = temp;
     }
 }
 
 void Iron::increaseSelectedTemp()
 {
-    this->increaseSelectedTemp(this->settings.selectStep);
+    this->increaseSelectedTemp(this->settings.tempSelectStep);
 }
 
-void Iron::increaseSelectedTemp(byte step)
+void Iron::increaseSelectedTemp(float step)
 {
     if (this->selectedTemp < this->maxTemp)
     {
@@ -409,10 +409,10 @@ void Iron::increaseSelectedTemp(byte step)
 
 void Iron::decreaseSelectedTemp()
 {
-    this->decreaseSelectedTemp(this->settings.selectStep);
+    this->decreaseSelectedTemp(this->settings.tempSelectStep);
 }
 
-void Iron::decreaseSelectedTemp(byte step)
+void Iron::decreaseSelectedTemp(float step)
 {
     if (this->selectedTemp > this->minTemp)
     {

@@ -48,7 +48,7 @@ void UserInterface::run()
     }
 }
 
-void UserInterface::onEncPrev()
+void UserInterface::onPrev()
 {
     switch (this->selectedLevel)
     {
@@ -71,7 +71,7 @@ void UserInterface::onEncPrev()
     }
 }
 
-void UserInterface::onEncNext()
+void UserInterface::onNext()
 {
     switch (this->selectedLevel)
     {
@@ -94,7 +94,7 @@ void UserInterface::onEncNext()
     }
 }
 
-void UserInterface::onEncPress()
+void UserInterface::onPress()
 {
     switch (this->selectedLevel)
     {
@@ -159,7 +159,7 @@ void UserInterface::onEncPress()
     }
 }
 
-void UserInterface::onEncLongPress()
+void UserInterface::onLongPress()
 {
     switch (this->selectedView)
     {
