@@ -21,11 +21,11 @@
 #define PWM_BITS 10
 #define PWM_MAX 1023
 
-#define TEMP_MEASURE_SAMPLES_FREQ_MS (40 / 1000)
+#define TEMP_MEASURE_SAMPLES_FREQ_MS (40 / 1000) * 1000UL
 #define TEMP_MEASURE_SAMPLES 30
 #define TEMP_MEASURE_SETTLE_TIME_US 600
 
-#define PID_SAMPLE_TIME_US 10000UL
+#define PID_SAMPLE_TIME_US TEMP_MEASURE_SAMPLES_FREQ_MS * 1000UL
 
 #define HEATER_CHECK_INTERVAL_MS 1000
 #define HEATER_CHECK_MIN_TEMP_RIZE 2.0f
@@ -44,7 +44,7 @@ public:
         STATUS_IDLE,
         STATUS_HEATING,
         STATUS_FAULT,
-        STATUS_SLEEP
+        STATUS_STAND_BY
     };
 
     enum SoundEvent : uint8_t
@@ -75,7 +75,7 @@ private:
     bool invertedOutput = true;
 
     float targetTemp = 200.0f;
-    float wakeUpTemp = 200.0f;
+    float pickUpTemp = 200.0f;
 
     float heaterOutput = 0.0f;
     float minOutput;
@@ -121,12 +121,12 @@ private:
         // float kp = 8.0f;
         // float ki = 2.0f;
         // float kd = 0.5f;
-        float kp = 8.0f;
-        float ki = 2.0f;
+        float kp = 10.0f;
+        float ki = 1.0f;
         float kd = 0.5f;
         QuickPID::pMode pMode = QuickPID::pMode::pOnError;
-        QuickPID::dMode dMode = QuickPID::dMode::dOnMeas;
-        QuickPID::iAwMode iAwMode = QuickPID::iAwMode::iAwOff;
+        QuickPID::dMode dMode = QuickPID::dMode::dOnError;
+        QuickPID::iAwMode iAwMode = QuickPID::iAwMode::iAwCondition;
 
         // Thermocouple Calibration
         float opAmpGain = OPAMP_GAIN;
@@ -173,8 +173,8 @@ public:
     void setStatus(Status status);
     void playTone(SoundEvent event);
     void toggle();
-    void sleep();
-    void wakeUp();
+    void standBy();
+    void pickUp();
     void setTargetTemp(float temp);
     void increaseTargetTemp();
     void increaseTargetTemp(float step);

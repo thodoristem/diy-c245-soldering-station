@@ -44,14 +44,14 @@ void encoderISR()
     encoder.tick();
 }
 
-void onSleepSense()
+void onStandbySense()
 {
-    ui.onSleepSense();
+    iron.standBy();
 }
 
-void onWakeSense()
+void onPickUpSense()
 {
-    ui.onWakeSense();
+    iron.pickUp();
 }
 
 void onEncoderLongPress()
@@ -72,8 +72,8 @@ void setup()
     sleepSense.setup(HANDLE_SENSE_PIN, INPUT, true);
     sleepSense.setDebounceMs(BTN_DEBOUNCE_MS);
     sleepSense.setPressMs(BTN_PRESS_MS);
-    sleepSense.attachDuringLongPress(onSleepSense);
-    sleepSense.attachLongPressStop(onWakeSense);
+    sleepSense.attachDuringLongPress(onStandbySense);
+    sleepSense.attachLongPressStop(onPickUpSense);
 
     encoderButton.setup(ENC_BUTTON_PIN, INPUT_PULLUP, true);
     encoderButton.setDebounceMs(BTN_DEBOUNCE_MS);

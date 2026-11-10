@@ -60,8 +60,6 @@ public:
     void onNext();
     void onPress();
     void onLongPress();
-    void onSleepSense();
-    void onWakeSense();
 
     void selectView(View view);
 

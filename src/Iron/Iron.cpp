@@ -305,19 +305,25 @@ void Iron::toggle()
     }
 }
 
-void Iron::sleep()
+void Iron::standBy()
 {
-    this->wakeUpTemp = this->getTargetTemp();
-    this->setTargetTemp(this->settings.sleepTemp);
-    this->setStatus(Iron::Status::STATUS_SLEEP);
-    this->playTone(SoundEvent::SOUND_HEATER_OFF);
+    if (this->getStatus() != Iron::Status::STATUS_STAND_BY)
+    {
+        this->pickUpTemp = this->getTargetTemp();
+        this->setTargetTemp(this->settings.sleepTemp);
+        this->setStatus(Iron::Status::STATUS_STAND_BY);
+        this->playTone(SoundEvent::SOUND_HEATER_OFF);
+    }
 }
 
-void Iron::wakeUp()
+void Iron::pickUp()
 {
-    this->setTargetTemp(this->wakeUpTemp);
-    this->setStatus(Iron::STATUS_HEATING);
-    this->playTone(SoundEvent::SOUND_HEATER_ON);
+    if (this->getStatus() == Iron::Status::STATUS_STAND_BY)
+    {
+        this->setTargetTemp(this->pickUpTemp);
+        this->setStatus(Iron::STATUS_HEATING);
+        this->playTone(SoundEvent::SOUND_HEATER_ON);
+    }
 }
 
 void Iron::heaterCheck()

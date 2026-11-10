@@ -172,16 +172,6 @@ void UserInterface::onLongPress()
     }
 }
 
-void UserInterface::onSleepSense()
-{
-    this->iron->sleep();
-}
-
-void UserInterface::onWakeSense()
-{
-    this->iron->wakeUp();
-}
-
 void UserInterface::prevSelection()
 {
     if (this->selectedOption <= this->minOptionCount)
@@ -417,8 +407,8 @@ void UserInterface::drawStatus()
     case Iron::Status::STATUS_IDLE:
         status = "IDLE";
         break;
-    case Iron::Status::STATUS_SLEEP:
-        status = "SLEEP";
+    case Iron::Status::STATUS_STAND_BY:
+        status = "STAND BY";
         break;
     }
 
