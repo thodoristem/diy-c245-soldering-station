@@ -5,15 +5,6 @@
 #include <QuickPID.h>
 #include <curveFitting.h>
 
-// #define OPAMP_ZERO_OUTPUT_V 0.0017f
-// #define OPAMP_GAIN 214.0f
-// #define VREF 3.285f
-
-#define THERMISTOR_RES 10000.0f
-#define THERMISTOR_FIXED_RES THERMISTOR_RES
-#define THERMISTOR_K 298.15f
-#define THERMISTOR_BETA 3950.0f
-
 #define ADC_BITS 12
 #define ADC_MAX 4095
 
@@ -30,7 +21,7 @@
 #define HEATER_CHECK_INTERVAL_MS 1000
 #define HEATER_CHECK_MIN_TEMP_RIZE 2.0f
 
-#define CONFI_MAGIC 0xC245A100UL
+#define CONFIG_MAGIC 0xC245A100UL
 #define GENERAL_SETTINGS_COUNT 7
 #define PID_SETTINGS_COUNT 3
 #define OPAMP_SETTINGS_COUNT 3
@@ -115,7 +106,6 @@ private:
 
     uint8_t heaterOutputPin;
     uint8_t heaterTempPin;
-    uint8_t coldJunctionTempPin;
     uint8_t beeperPin;
 
     bool invertedOutput = true;
@@ -136,9 +126,6 @@ private:
     float minTemp;
     float maxTemp;
 
-    float coldJunctionTempMV = 0.0f;
-    float coldJunctionTemp = 0.0f;
-
     bool heaterTempReached = false;
     bool heaterTempReachedRev = true;
 
@@ -154,7 +141,7 @@ private:
 
     struct Configuration
     {
-        uint32_t magic = CONFI_MAGIC;
+        uint32_t magic = CONFIG_MAGIC;
 
         Setting generalSettings[GENERAL_SETTINGS_COUNT] = {
             {"Min Temp", 50.0f, 450.0f, 100.0f, 5.0f, 0, "C"},
@@ -202,7 +189,6 @@ private:
 
     void runPID();
     void readTemp();
-    void readColdJunctionTemp();
     void heaterCheck();
     void heaterOutputUpdate();
     void heaterOutputOff();
@@ -211,7 +197,6 @@ public:
     Iron(
         uint8_t heaterOutputPin,
         uint8_t heaterTempPin,
-        uint8_t coldJunctionTempPin,
         uint8_t beeperPin,
         bool outputReversed);
 
@@ -240,7 +225,6 @@ public:
     float getHeaterTempMV();
     float getHeaterTemp();
     float getHeaterTempPct();
-    float getColdJunctionTemp();
 
     Setting getSetting(Iron::SettingType type, uint8_t key);
     void setSetting(Iron::SettingType type, uint8_t key, float value);

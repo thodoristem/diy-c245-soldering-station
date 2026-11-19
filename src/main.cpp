@@ -6,7 +6,6 @@
 #include <U8g2lib.h>
 
 #define HEATER_OUPUT_PIN PA8
-#define COLD_JUNCTION_TEMP_PIN PB0 // Not used at the moment
 #define HEATER_TEMP_PIN PB1
 #define BEEPER_PIN PA1
 
@@ -23,7 +22,6 @@
 Iron iron(
     HEATER_OUPUT_PIN,
     HEATER_TEMP_PIN,
-    COLD_JUNCTION_TEMP_PIN,
     BEEPER_PIN,
     false);
 

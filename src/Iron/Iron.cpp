@@ -4,18 +4,15 @@
 Iron::Iron(
     uint8_t heaterOutputPin,
     uint8_t heaterTempPin,
-    uint8_t coldJunctionTempPin,
     uint8_t beeperPin,
     bool invertedOutput)
 {
     this->heaterOutputPin = heaterOutputPin;
     this->heaterTempPin = heaterTempPin;
-    this->coldJunctionTempPin = coldJunctionTempPin;
     this->beeperPin = beeperPin;
     this->invertedOutput = invertedOutput;
 
     pinMode(this->heaterTempPin, INPUT);
-    pinMode(this->coldJunctionTempPin, INPUT);
     pinMode(this->heaterOutputPin, OUTPUT);
     pinMode(this->beeperPin, OUTPUT);
 }
@@ -84,7 +81,7 @@ void Iron::loadSettings()
 {
     Configuration tmp;
     EEPROM.get(0, tmp);
-    if (tmp.magic != CONFI_MAGIC)
+    if (tmp.magic != CONFIG_MAGIC)
     {
         this->tempCoefficientCalculation();
         this->saveSettings();
@@ -163,26 +160,6 @@ void Iron::readTemp()
 
         this->tempMeasureActive = false;
     }
-}
-
-void Iron::readColdJunctionTemp()
-{
-    float volts = this->readVoltage(
-        this->coldJunctionTempPin,
-        TEMP_MEASURE_SAMPLES,
-        TEMP_MEASURE_SETTLE_TIME_US,
-        this->vRef);
-
-    if (volts <= 0.0f || volts >= this->vRef)
-    {
-        return;
-    }
-
-    float resistance = THERMISTOR_FIXED_RES * volts / (this->vRef - volts);
-    float invT = 1.0f / THERMISTOR_K + log(resistance / THERMISTOR_RES) / THERMISTOR_BETA;
-
-    this->coldJunctionTempMV = volts * 1000.0f;
-    this->coldJunctionTemp = (1.0f / invT - 273.15f);
 }
 
 void Iron::run()
@@ -456,11 +433,6 @@ float Iron::getHeaterTempPct()
 float Iron::getHeaterTempMV()
 {
     return this->heaterTempMV;
-}
-
-float Iron::getColdJunctionTemp()
-{
-    return this->coldJunctionTemp;
 }
 
 float Iron::getHeaterOutput()
