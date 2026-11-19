@@ -33,11 +33,14 @@ void UserInterface::run()
         case PAGE_GENERAL_SETTINGS:
             this->showGeneralSettingsPage();
             break;
-        case PAGE_CAL_POINTS:
-            this->showCalPointsPage();
-            break;
         case PAGE_PID:
             this->showPIDPage();
+            break;
+        case PAGE_OPAMP:
+            this->showOpAmpPage();
+            break;
+        case PAGE_CAL_POINTS:
+            this->showCalPointsPage();
             break;
         case PAGE_RESET:
             this->showResetPage();
@@ -53,13 +56,22 @@ void UserInterface::onPrev()
     switch (this->selectedLevel)
     {
     case HOME:
-        this->iron->decreaseTargetTemp();
+        this->iron->decTargetTemp();
         break;
     case OPTION_EDIT:
         switch (this->selectedView)
         {
+        case PAGE_GENERAL_SETTINGS:
+            this->iron->decSetting(Iron::SettingType::GENERAL_SETTINGS, this->selectedOption - 1);
+            break;
+        case PAGE_PID:
+            this->iron->decSetting(Iron::SettingType::PID_SETTINGS, this->selectedOption - 1);
+            break;
+        case PAGE_OPAMP:
+            this->iron->decSetting(Iron::SettingType::OPAMP_SETTINGS, this->selectedOption - 1);
+            break;
         case PAGE_CAL_POINTS:
-            this->iron->decreaseTargetTemp(1);
+            this->iron->decTargetTemp(1);
             break;
         default:
             break;
@@ -76,13 +88,22 @@ void UserInterface::onNext()
     switch (this->selectedLevel)
     {
     case HOME:
-        this->iron->increaseTargetTemp();
+        this->iron->incTargetTemp();
         break;
     case OPTION_EDIT:
         switch (this->selectedView)
         {
+        case PAGE_GENERAL_SETTINGS:
+            this->iron->incSetting(Iron::SettingType::GENERAL_SETTINGS, this->selectedOption - 1);
+            break;
+        case PAGE_PID:
+            this->iron->incSetting(Iron::SettingType::PID_SETTINGS, this->selectedOption - 1);
+            break;
+        case PAGE_OPAMP:
+            this->iron->incSetting(Iron::SettingType::OPAMP_SETTINGS, this->selectedOption - 1);
+            break;
         case PAGE_CAL_POINTS:
-            this->iron->increaseTargetTemp(1);
+            this->iron->incTargetTemp(1);
             break;
         default:
             break;
@@ -108,12 +129,15 @@ void UserInterface::onPress()
             this->selectView(PAGE_GENERAL_SETTINGS);
             break;
         case 1:
-            this->selectView(PAGE_CAL_POINTS);
-            break;
-        case 2:
             this->selectView(PAGE_PID);
             break;
+        case 2:
+            this->selectView(PAGE_OPAMP);
+            break;
         case 3:
+            this->selectView(PAGE_CAL_POINTS);
+            break;
+        case 4:
             this->selectView(PAGE_RESET);
             break;
         }
@@ -135,6 +159,7 @@ void UserInterface::onPress()
                 this->iron->setStatus(Iron::Status::STATUS_HEATING);
                 break;
             default:
+                this->selectedLevel = OPTION_EDIT;
                 break;
             }
         }
@@ -148,9 +173,10 @@ void UserInterface::onPress()
             this->iron->setCalPointMv(this->selectedOption, this->iron->getHeaterTempMV());
             // this->iron->tempCoefficientCalculation();
             this->iron->setStatus(Iron::Status::STATUS_IDLE);
-            this->iron->setTargetTemp(this->iron->getSettings().initTemp);
+            this->iron->setTargetTemp(this->iron->getSetting(Iron::SettingType::GENERAL_SETTINGS, Iron::GeneralSettings::INITIAL_TEMP).value);
             break;
         default:
+            this->selectedLevel = OPTION_SELECT;
             break;
         }
         break;
@@ -168,6 +194,7 @@ void UserInterface::onLongPress()
         break;
     default:
         this->selectView(View::DASHBOARD);
+        this->iron->init();
         break;
     }
 }
@@ -202,6 +229,30 @@ void UserInterface::selectView(View view)
     this->selectedView = view;
 }
 
+void UserInterface::decOptionOffset()
+{
+    if (this->optionOffset > 0)
+    {
+        this->optionOffset--;
+    }
+    else
+    {
+        this->optionOffset = 0;
+    }
+}
+
+void UserInterface::incOptionOffset(uint8_t limit)
+{
+    if (this->optionOffset < limit)
+    {
+        this->optionOffset++;
+    }
+    else
+    {
+        this->optionOffset = limit;
+    }
+}
+
 void UserInterface::showDashboard()
 {
     if (this->viewInit)
@@ -210,6 +261,7 @@ void UserInterface::showDashboard()
         this->minOptionCount = 0;
         this->maxOptionCount = 0;
         this->selectedOption = 0;
+
         this->viewInit = false;
     }
 
@@ -247,10 +299,11 @@ void UserInterface::showMenu()
     {
         this->selectedLevel = PAGE_SELECT;
         this->minOptionCount = 0;
-        this->maxOptionCount = 3;
+        this->maxOptionCount = 4;
         this->selectedOption = 0;
-        this->viewInit = false;
         this->iron->setStatus(Iron::Status::STATUS_IDLE);
+
+        this->viewInit = false;
     }
 
     switch (this->selectedOption)
@@ -259,12 +312,15 @@ void UserInterface::showMenu()
         this->showGeneralSettingsPage();
         break;
     case 1:
-        this->showCalPointsPage();
-        break;
-    case 2:
         this->showPIDPage();
         break;
+    case 2:
+        this->showOpAmpPage();
+        break;
     case 3:
+        this->showCalPointsPage();
+        break;
+    case 4:
         this->showResetPage();
         break;
     }
@@ -275,61 +331,16 @@ void UserInterface::showGeneralSettingsPage()
     if (this->viewInit && this->selectedLevel == PAGE_SELECT)
     {
         this->selectedLevel = OPTION_SELECT;
+        this->optionOffset = 0;
+        this->maxOptionsVisible = 3;
         this->minOptionCount = 0;
-        this->maxOptionCount = 5;
+        this->maxOptionCount = GENERAL_SETTINGS_COUNT;
         this->selectedOption = 0;
         this->viewInit = false;
     }
 
     this->drawTitle("GENERAL SETTINGS", 12);
-}
-
-void UserInterface::showCalPointsPage()
-{
-    if (this->viewInit && this->selectedLevel == PAGE_SELECT)
-    {
-        this->selectedLevel = OPTION_SELECT;
-        this->minOptionCount = 0;
-        this->maxOptionCount = CAL_NPOINTS - 1;
-        this->selectedOption = 1;
-        this->viewInit = false;
-    }
-
-    String title = "CALIBRATION (";
-    title += String((int)this->iron->getHeaterTemp());
-    title += "C)";
-
-    this->drawTitle(title, 12);
-
-    int xOffset = 5;
-    int yOffset = 20;
-    String label;
-
-    this->lcd->setFont(u8g2_font_spleen5x8_mf);
-
-    for (int i = 1; i < CAL_NPOINTS; i++)
-    {
-        label = String((int)this->iron->getCalPoint(i).tempC) + "C:";
-
-        if (this->selectedOption == i && this->selectedLevel == OPTION_EDIT)
-        {
-            label += String(this->iron->getTargetTemp() - this->iron->getCalPoint(i).tempC, 0);
-        }
-        else
-        {
-            label += String(this->iron->getSettings().calPoints[i].mV, 3);
-        }
-
-        if (i == CAL_NPOINTS / 2 + 1)
-        {
-            xOffset = this->lcd->getWidth() / 2;
-            yOffset = 20;
-        }
-
-        this->drawOption(label, xOffset, yOffset, 2, (this->selectedLevel == OPTION_SELECT || this->selectedLevel == OPTION_EDIT) && this->selectedOption == i);
-
-        yOffset += 12;
-    }
+    this->drawSelect(Iron::SettingType::GENERAL_SETTINGS, GENERAL_SETTINGS_COUNT, this->maxOptionsVisible, 4, 22);
 }
 
 void UserInterface::showPIDPage()
@@ -337,12 +348,87 @@ void UserInterface::showPIDPage()
     if (this->viewInit && this->selectedLevel == PAGE_SELECT)
     {
         this->selectedLevel = OPTION_SELECT;
+        this->optionOffset = 0;
+        this->maxOptionsVisible = 3;
         this->minOptionCount = 0;
-        this->maxOptionCount = 5;
+        this->maxOptionCount = PID_SETTINGS_COUNT;
+        this->selectedOption = 0;
+        this->viewInit = false;
+    }
+
+    this->drawTitle("PID TUNING", 12);
+    this->drawSelect(Iron::SettingType::PID_SETTINGS, PID_SETTINGS_COUNT, this->maxOptionsVisible, 4, 22);
+}
+
+void UserInterface::showOpAmpPage()
+{
+    if (this->viewInit && this->selectedLevel == PAGE_SELECT)
+    {
+        this->selectedLevel = OPTION_SELECT;
+        this->optionOffset = 0;
+        this->maxOptionsVisible = 3;
+        this->minOptionCount = 0;
+        this->maxOptionCount = OPAMP_SETTINGS_COUNT;
+        this->selectedOption = 0;
+        this->viewInit = false;
+    }
+
+    this->drawTitle("OP AMP SETTINGS", 12);
+    this->drawSelect(Iron::SettingType::OPAMP_SETTINGS, OPAMP_SETTINGS_COUNT, this->maxOptionsVisible, 4, 22);
+}
+
+void UserInterface::showCalPointsPage()
+{
+    if (this->viewInit && this->selectedLevel == PAGE_SELECT)
+    {
+        this->selectedLevel = OPTION_SELECT;
+        this->optionOffset = 0;
+        this->maxOptionsVisible = 3;
+        this->minOptionCount = 0;
+        this->maxOptionCount = CAL_NPOINTS - 1;
         this->selectedOption = 1;
         this->viewInit = false;
     }
-    this->drawTitle("PID TUNING", 12);
+
+    this->drawTitle("TIP CALIBRATION", 12);
+
+    String label;
+    bool selected = false;
+
+    int xOffset = 12;
+    int yOffset = 22;
+
+    for (int i = this->optionOffset + 1; i < CAL_NPOINTS; i++)
+    {
+        selected = (this->selectedLevel == OPTION_SELECT || this->selectedLevel == OPTION_EDIT) && this->selectedOption == i;
+
+        if (this->selectedOption == i && this->selectedLevel == OPTION_EDIT)
+        {
+            label = String((int)this->iron->getHeaterTemp()) + "-" + String((int)this->iron->getCalPoint(i).tempC) + "C: ";
+            label += String((int)(this->iron->getTargetTemp() - this->iron->getCalPoint(i).tempC));
+        }
+        else
+        {
+            label = String((int)this->iron->getCalPoint(i).tempC) + "C: ";
+            label += String(this->iron->getCalPoint(i).mV, 3) + "mV";
+        }
+
+        if (selected)
+        {
+            if (this->selectedOption > this->optionOffset + maxOptionsVisible)
+            {
+                this->incOptionOffset(CAL_NPOINTS - 1);
+            }
+            else if (this->selectedOption < this->optionOffset + (maxOptionsVisible - 1))
+            {
+                this->decOptionOffset();
+            }
+        }
+
+        this->drawOption(label, xOffset, yOffset, 2, selected);
+
+        yOffset += 16;
+    }
 }
 
 void UserInterface::showResetPage()
@@ -350,9 +436,11 @@ void UserInterface::showResetPage()
     if (this->viewInit && this->selectedLevel == PAGE_SELECT)
     {
         this->selectedLevel = OPTION_SELECT;
+        this->optionOffset = 0;
+        this->maxOptionsVisible = 2;
         this->minOptionCount = 0;
-        this->maxOptionCount = 5;
-        this->selectedOption = 1;
+        this->maxOptionCount = 2;
+        this->selectedOption = 2;
         this->viewInit = false;
     }
     this->drawTitle("RESET SETTINGS", 12);
@@ -376,20 +464,72 @@ void UserInterface::drawTitle(String title, uint8_t height)
 
 void UserInterface::drawOption(String label, uint8_t x, uint8_t y, uint8_t p, bool selected)
 {
-    this->lcd->setFont(u8g2_font_spleen5x8_mf);
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
     this->lcd->setFontPosCenter();
 
     uint8_t w = this->lcd->getStrWidth(label.c_str());
     w = w + p * 2 + 1;
 
-    uint8_t h = 8 + p * 2;
+    uint8_t h = 12 + p * 2;
+
+    this->lcd->drawUTF8(x + p + 1, y + 1, label.c_str());
 
     if (selected)
     {
-        this->lcd->drawFrame(x, y - h / 2, w, h);
+        if (this->selectedLevel == OPTION_EDIT)
+        {
+            this->lcd->drawBox(x, y - h / 2, w, h);
+        }
+        else
+        {
+            this->lcd->drawFrame(x, y - h / 2, w, h);
+        }
     }
+}
 
-    this->lcd->drawStr(x + p + 1, y + 1, label.c_str());
+void UserInterface::drawSelect(Iron::SettingType settingType, uint8_t maxOptions, uint8_t maxOptionsVisible, uint8_t xOffset, uint8_t yOffset)
+{
+    bool selected = false;
+    String label;
+    uint8_t index = 0;
+    uint8_t decPlaces = 0;
+    float value = 0.0f;
+    String unit;
+
+    for (uint8_t i = this->optionOffset + 1; i <= maxOptions; i++)
+    {
+        index = i - 1;
+        selected = (this->selectedLevel == OPTION_SELECT || this->selectedLevel == OPTION_EDIT) && this->selectedOption == i;
+        decPlaces = this->iron->getSetting(settingType, index).decPlaces;
+        value = this->iron->getSetting(settingType, index).value;
+        label = String(this->iron->getSetting(settingType, index).label + ": ");
+        unit = String(this->iron->getSetting(settingType, index).unit);
+
+        if (decPlaces == 0)
+        {
+            label += String((int)(value)) + unit;
+        }
+        else
+        {
+            label += String(value, decPlaces);
+        }
+
+        if (selected)
+        {
+            if (this->selectedOption > this->optionOffset + maxOptionsVisible)
+            {
+                this->incOptionOffset(maxOptions);
+            }
+            else if (this->selectedOption < this->optionOffset + (maxOptionsVisible - 1))
+            {
+                this->decOptionOffset();
+            }
+        }
+
+        this->drawOption(label, xOffset, yOffset, 2, selected);
+
+        yOffset += 16;
+    }
 }
 
 void UserInterface::drawStatus()

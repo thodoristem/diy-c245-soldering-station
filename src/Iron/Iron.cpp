@@ -5,19 +5,19 @@ Iron::Iron(
     uint8_t heaterOutputPin,
     uint8_t heaterTempPin,
     uint8_t coldJunctionTempPin,
-    uint8_t buzzerPin,
+    uint8_t beeperPin,
     bool invertedOutput)
 {
     this->heaterOutputPin = heaterOutputPin;
     this->heaterTempPin = heaterTempPin;
     this->coldJunctionTempPin = coldJunctionTempPin;
-    this->buzzerPin = buzzerPin;
+    this->beeperPin = beeperPin;
     this->invertedOutput = invertedOutput;
 
     pinMode(this->heaterTempPin, INPUT);
     pinMode(this->coldJunctionTempPin, INPUT);
     pinMode(this->heaterOutputPin, OUTPUT);
-    pinMode(this->buzzerPin, OUTPUT);
+    pinMode(this->beeperPin, OUTPUT);
 }
 
 void Iron::init()
@@ -29,12 +29,15 @@ void Iron::init()
     analogWriteResolution(PWM_BITS);
 
     // this->loadSettings();
+    this->vRef = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::VREF).value;
+    this->opAmpGain = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_GAIN).value;
+    this->opAmpZeroOutputV = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_ZERO_OUTPUT_V).value;
+
     this->tempCoefficientCalculation();
-    this->setTargetTemp(this->settings.initTemp);
-    this->setOutputRange(this->settings.minOutputPCT, this->settings.maxOutputPCT);
-    this->minTemp = this->settings.minTemp;
-    this->maxTemp = this->settings.maxTemp;
-    this->targetTemp = this->settings.initTemp;
+    this->setOutputRange(0.0f, this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_OUTPUT_PCT).value);
+    this->minTemp = this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MIN_TEMP).value;
+    this->maxTemp = this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_TEMP).value;
+    this->setTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::INITIAL_TEMP).value);
 
     this->heaterOutputOff();
 
@@ -44,17 +47,17 @@ void Iron::init()
         &this->heaterTemp,
         &this->heaterOutput,
         &this->targetTemp,
-        this->settings.kp,
-        this->settings.ki,
-        this->settings.kd,
-        this->settings.pMode,
-        this->settings.dMode,
-        this->settings.iAwMode,
+        this->getSetting(SettingType::PID_SETTINGS, PidSettings::PID_KP).value,
+        this->getSetting(SettingType::PID_SETTINGS, PidSettings::PID_KI).value,
+        this->getSetting(SettingType::PID_SETTINGS, PidSettings::PID_KD).value,
+        this->configuration.pMode,
+        this->configuration.dMode,
+        this->configuration.iAwMode,
         QuickPID::Action::direct);
 
     this->pid->SetMode(QuickPID::Control::automatic);
     this->pid->SetOutputLimits(this->minOutput, this->maxOutput);
-    this->pid->SetSampleTimeUs(PID_SAMPLE_TIME_US);
+    this->pid->SetSampleTimeUs(PID_SAMPLES_TIME_US);
 
     this->playTone(SoundEvent::SOUND_INIT);
 }
@@ -62,8 +65,8 @@ void Iron::init()
 void Iron::initCal()
 {
     this->setOutputRange(0.0f, 50.0f);
-    this->minTemp = this->settings.minTemp - 25;
-    this->maxTemp = this->settings.maxTemp + 25;
+    this->minTemp = this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MIN_TEMP).value - 25;
+    this->maxTemp = this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_TEMP).value + 25;
 }
 
 void Iron::setOutputRange(float minPCT, float maxPCT)
@@ -74,37 +77,22 @@ void Iron::setOutputRange(float minPCT, float maxPCT)
 
 void Iron::saveSettings()
 {
-    EEPROM.put(0, this->settings);
+    EEPROM.put(0, this->configuration);
 }
 
 void Iron::loadSettings()
 {
-    Settings tmp;
+    Configuration tmp;
     EEPROM.get(0, tmp);
-    if (tmp.magic != SETTINGS_MAGIC)
+    if (tmp.magic != CONFI_MAGIC)
     {
         this->tempCoefficientCalculation();
         this->saveSettings();
     }
     else
     {
-        this->settings = tmp;
+        this->configuration = tmp;
     }
-}
-
-float Iron::readVoltage(uint8_t pin, int samples, unsigned int settleTimeUs, float vRef)
-{
-    delayMicroseconds(settleTimeUs);
-
-    int total = 0;
-
-    for (int i = 0; i < samples; i++)
-    {
-        delayMicroseconds(2);
-        total += analogRead(pin);
-    }
-
-    return (float)(total / samples) * vRef / ADC_MAX;
 }
 
 bool Iron::tempCoefficientCalculation()
@@ -114,8 +102,8 @@ bool Iron::tempCoefficientCalculation()
 
     for (int i = 0; i < CAL_NPOINTS; i++)
     {
-        mv[i] = this->settings.calPoints[i].mV;
-        t[i] = this->settings.calPoints[i].tempC;
+        mv[i] = this->configuration.calPoints[i].mV;
+        t[i] = this->configuration.calPoints[i].tempC;
     }
 
     double coeffs[CAL_NCOEFFS];
@@ -134,7 +122,7 @@ bool Iron::tempCoefficientCalculation()
 
     for (int i = 0; i < CAL_NCOEFFS; i++)
     {
-        this->settings.coeffs[i] = coeffs[i];
+        this->configuration.coeffs[i] = coeffs[i];
     }
 
     return true;
@@ -149,7 +137,7 @@ void Iron::readTemp()
         return;
     }
 
-    if (millis() - this->tempMeasureStart >= TEMP_MEASURE_SAMPLES_FREQ_MS)
+    if (millis() - this->tempMeasureStart >= TEMP_MEASURE_SAMPLES_TIME_MS)
     {
         // Stop heater
         this->heaterOutputOff();
@@ -159,19 +147,19 @@ void Iron::readTemp()
             this->heaterTempPin,
             TEMP_MEASURE_SAMPLES,
             TEMP_MEASURE_SETTLE_TIME_US,
-            this->settings.vRef);
+            this->vRef);
 
         // Resume heater
         this->heaterOutputUpdate();
 
         // Convert amplifier output to thermocouple millivolts.
-        this->heaterTempMV = (volts - this->settings.opAmpZeroOutputV) * 1000.0f / this->settings.opAmpGain;
+        this->heaterTempMV = (volts - this->opAmpZeroOutputV) * 1000.0f / this->opAmpGain;
 
         // 4th Order Polynomial c0 * mV^3 + c1 * mV^2 + c2 * mV + c3
-        this->heaterTemp = this->settings.coeffs[0] * pow(this->heaterTempMV, 3);
-        this->heaterTemp += this->settings.coeffs[1] * pow(this->heaterTempMV, 2);
-        this->heaterTemp += this->settings.coeffs[2] * this->heaterTempMV;
-        this->heaterTemp += this->settings.coeffs[3];
+        this->heaterTemp = this->configuration.coeffs[0] * pow(this->heaterTempMV, 3);
+        this->heaterTemp += this->configuration.coeffs[1] * pow(this->heaterTempMV, 2);
+        this->heaterTemp += this->configuration.coeffs[2] * this->heaterTempMV;
+        this->heaterTemp += this->configuration.coeffs[3];
 
         this->tempMeasureActive = false;
     }
@@ -183,14 +171,14 @@ void Iron::readColdJunctionTemp()
         this->coldJunctionTempPin,
         TEMP_MEASURE_SAMPLES,
         TEMP_MEASURE_SETTLE_TIME_US,
-        this->settings.vRef);
+        this->vRef);
 
-    if (volts <= 0.0f || volts >= this->settings.vRef)
+    if (volts <= 0.0f || volts >= this->vRef)
     {
         return;
     }
 
-    float resistance = THERMISTOR_FIXED_RES * volts / (this->settings.vRef - volts);
+    float resistance = THERMISTOR_FIXED_RES * volts / (this->vRef - volts);
     float invT = 1.0f / THERMISTOR_K + log(resistance / THERMISTOR_RES) / THERMISTOR_BETA;
 
     this->coldJunctionTempMV = volts * 1000.0f;
@@ -243,39 +231,43 @@ void Iron::runPID()
 
 void Iron::playTone(SoundEvent event)
 {
+    if (this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::BEEPER).value == 0)
+    {
+        return;
+    }
     switch (event)
     {
     case SOUND_INIT:
-        tone(this->buzzerPin, 800, 100);
+        tone(this->beeperPin, 800, 100);
         delay(150);
-        tone(this->buzzerPin, 1200, 100);
+        tone(this->beeperPin, 1200, 100);
         delay(150);
-        tone(this->buzzerPin, 1600, 150);
+        tone(this->beeperPin, 1600, 150);
         break;
     case SOUND_TEMP_CHANGE:
-        tone(this->buzzerPin, 2200, 70);
+        tone(this->beeperPin, 2200, 70);
         break;
     case SOUND_TEMP_REACHED:
-        tone(this->buzzerPin, 1200, 100);
+        tone(this->beeperPin, 1200, 100);
         delay(150);
-        tone(this->buzzerPin, 1800, 180);
+        tone(this->beeperPin, 1800, 180);
         break;
     case SOUND_ERROR:
         for (uint8_t i = 0; i < 3; i++)
         {
-            tone(this->buzzerPin, 500, 180);
+            tone(this->beeperPin, 500, 180);
             delay(260);
         }
         break;
     case SOUND_HEATER_ON:
-        tone(this->buzzerPin, 1600, 70);
+        tone(this->beeperPin, 1600, 70);
         break;
     case SOUND_HEATER_OFF:
-        tone(this->buzzerPin, 1000, 100);
+        tone(this->beeperPin, 1000, 100);
         break;
     case SOUND_NONE:
     default:
-        noTone(this->buzzerPin);
+        noTone(this->beeperPin);
         break;
     }
 }
@@ -310,7 +302,7 @@ void Iron::standBy()
     if (this->getStatus() != Iron::Status::STATUS_STAND_BY)
     {
         this->pickUpTemp = this->getTargetTemp();
-        this->setTargetTemp(this->settings.sleepTemp);
+        this->setTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::STAND_BY_TEMP).value);
         this->setStatus(Iron::Status::STATUS_STAND_BY);
         this->playTone(SoundEvent::SOUND_HEATER_OFF);
     }
@@ -321,7 +313,7 @@ void Iron::pickUp()
     if (this->getStatus() == Iron::Status::STATUS_STAND_BY)
     {
         this->setTargetTemp(this->pickUpTemp);
-        this->setStatus(Iron::STATUS_HEATING);
+        this->setStatus(Iron::Status::STATUS_HEATING);
         this->playTone(SoundEvent::SOUND_HEATER_ON);
     }
 }
@@ -405,12 +397,12 @@ void Iron::setTargetTemp(float temp)
     }
 }
 
-void Iron::increaseTargetTemp()
+void Iron::incTargetTemp()
 {
-    this->increaseTargetTemp(this->settings.tempSelectStep);
+    this->incTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TEMP_SELECT_STEP).value);
 }
 
-void Iron::increaseTargetTemp(float step)
+void Iron::incTargetTemp(float step)
 {
     if (this->targetTemp < this->maxTemp)
     {
@@ -423,12 +415,12 @@ void Iron::increaseTargetTemp(float step)
     this->playTone(SoundEvent::SOUND_TEMP_CHANGE);
 }
 
-void Iron::decreaseTargetTemp()
+void Iron::decTargetTemp()
 {
-    this->decreaseTargetTemp(this->settings.tempSelectStep);
+    this->decTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TEMP_SELECT_STEP).value);
 }
 
-void Iron::decreaseTargetTemp(float step)
+void Iron::decTargetTemp(float step)
 {
     if (this->targetTemp > this->minTemp)
     {
@@ -481,22 +473,89 @@ float Iron::getHeaterOutputPct()
     return this->heaterOutput / this->maxOutput * 100.0f;
 }
 
-float Iron::getVRef()
+Iron::Setting Iron::getSetting(Iron::SettingType type, uint8_t key)
 {
-    return this->settings.vRef;
+    switch (type)
+    {
+    case GENERAL_SETTINGS:
+        return this->configuration.generalSettings[key];
+    case PID_SETTINGS:
+        return this->configuration.pidSettings[key];
+    case OPAMP_SETTINGS:
+        return this->configuration.opAmpSettings[key];
+    }
+    return this->configuration.generalSettings[key];
 }
 
-Iron::Settings Iron::getSettings()
+void Iron::setSetting(Iron::SettingType type, uint8_t key, float value)
 {
-    return this->settings;
+    switch (type)
+    {
+    case GENERAL_SETTINGS:
+        this->configuration.generalSettings[key].value = value;
+        break;
+    case PID_SETTINGS:
+        this->configuration.pidSettings[key].value = value;
+        break;
+    case OPAMP_SETTINGS:
+        this->configuration.opAmpSettings[key].value = value;
+        break;
+    }
+}
+
+void Iron::incSetting(Iron::SettingType type, uint8_t key)
+{
+    float value = this->getSetting(type, key).value;
+    float step = this->getSetting(type, key).step;
+    float max = this->getSetting(type, key).max;
+    if (value < max)
+    {
+        value += step;
+    }
+    else
+    {
+        value = max;
+    }
+    this->setSetting(type, key, value);
+}
+
+void Iron::decSetting(Iron::SettingType type, uint8_t key)
+{
+    float value = this->getSetting(type, key).value;
+    float step = this->getSetting(type, key).step;
+    float min = this->getSetting(type, key).min;
+    if (value > min)
+    {
+        value -= step;
+    }
+    else
+    {
+        value = min;
+    }
+    this->setSetting(type, key, value);
 }
 
 Iron::CalPoint Iron::getCalPoint(uint8_t index)
 {
-    return this->settings.calPoints[index];
+    return this->configuration.calPoints[index];
 }
 
 void Iron::setCalPointMv(uint8_t index, double mV)
 {
-    this->settings.calPoints[index].mV = mV;
+    this->configuration.calPoints[index].mV = mV;
+}
+
+float Iron::readVoltage(uint8_t pin, int samples, unsigned int settleTimeUs, float vRef)
+{
+    delayMicroseconds(settleTimeUs);
+
+    int total = 0;
+
+    for (int i = 0; i < samples; i++)
+    {
+        delayMicroseconds(2);
+        total += analogRead(pin);
+    }
+
+    return (float)(total / samples) * vRef / ADC_MAX;
 }

@@ -8,12 +8,12 @@
 #define HEATER_OUPUT_PIN PA8
 #define COLD_JUNCTION_TEMP_PIN PB0 // Not used at the moment
 #define HEATER_TEMP_PIN PB1
-#define BEEPER_PIN PA0
+#define BEEPER_PIN PA1
 
-#define HANDLE_SENSE_PIN PB12
-#define ENC_BUTTON_PIN PA1
-#define ENC_A_PIN PA2
-#define ENC_B_PIN PA3
+#define HANDLE_SENSE_PIN PB13
+#define ENC_BUTTON_PIN PA0
+#define ENC_A_PIN PA3
+#define ENC_B_PIN PA2
 
 #define BTN_DEBOUNCE_MS 0
 #define BTN_LONG_PRESS_MS 1000
@@ -37,7 +37,7 @@ U8G2_ST7920_128X64_F_SW_SPI lcd(
 UserInterface ui(&iron, &lcd);
 RotaryEncoder encoder(ENC_A_PIN, ENC_B_PIN, RotaryEncoder::LatchMode::FOUR3);
 OneButton encoderButton;
-OneButton sleepSense;
+OneButton handleSense;
 
 void encoderISR()
 {
@@ -69,11 +69,11 @@ void setup()
     iron.init();
     ui.init();
 
-    sleepSense.setup(HANDLE_SENSE_PIN, INPUT, true);
-    sleepSense.setDebounceMs(BTN_DEBOUNCE_MS);
-    sleepSense.setPressMs(BTN_PRESS_MS);
-    sleepSense.attachDuringLongPress(onStandbySense);
-    sleepSense.attachLongPressStop(onPickUpSense);
+    handleSense.setup(HANDLE_SENSE_PIN, INPUT, true);
+    handleSense.setDebounceMs(BTN_DEBOUNCE_MS);
+    handleSense.setPressMs(BTN_PRESS_MS);
+    handleSense.attachDuringLongPress(onStandbySense);
+    handleSense.attachLongPressStop(onPickUpSense);
 
     encoderButton.setup(ENC_BUTTON_PIN, INPUT_PULLUP, true);
     encoderButton.setDebounceMs(BTN_DEBOUNCE_MS);
@@ -88,7 +88,7 @@ void setup()
 
 void loop()
 {
-    sleepSense.tick();
+    handleSense.tick();
     encoderButton.tick();
 
     switch (encoder.getDirection())

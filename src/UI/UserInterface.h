@@ -16,6 +16,7 @@ public:
         PAGE_GENERAL_SETTINGS,
         PAGE_CAL_POINTS,
         PAGE_PID,
+        PAGE_OPAMP,
         PAGE_RESET
     };
 
@@ -37,6 +38,8 @@ private:
     View selectedView = DASHBOARD;
     bool viewInit = false;
     uint8_t selectedOption = 0;
+    uint8_t optionOffset = 0;
+    uint8_t maxOptionsVisible = 0;
     uint8_t minOptionCount = 0;
     uint8_t maxOptionCount = 0;
 
@@ -47,6 +50,7 @@ private:
 
     void drawTitle(String title, uint8_t height);
     void drawOption(String label, uint8_t x, uint8_t y, uint8_t p, bool selected);
+    void drawSelect(Iron::SettingType settingType, uint8_t maxOptions, uint8_t maxOptionsVisible, uint8_t x, uint8_t y);
     void drawLoadingBar(uint8_t x, uint8_t y, uint8_t width, uint8_t height, uint8_t percentage);
     void drawStatus();
 
@@ -62,12 +66,15 @@ public:
     void onLongPress();
 
     void selectView(View view);
+    void decOptionOffset();
+    void incOptionOffset(uint8_t limit);
 
     void showDashboard();
     void showMenu();
     void showGeneralSettingsPage();
     void showCalPointsPage();
     void showPIDPage();
+    void showOpAmpPage();
     void showResetPage();
 };
 
