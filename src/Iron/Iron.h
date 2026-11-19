@@ -35,7 +35,7 @@
 #define PID_SETTINGS_COUNT 3
 #define OPAMP_SETTINGS_COUNT 3
 
-#define CAL_NPOINTS 9
+#define CAL_NPOINTS 7
 #define CAL_ORDER 3
 #define CAL_NCOEFFS CAL_ORDER + 1
 
@@ -184,15 +184,16 @@ private:
 
         // Thermocouple Calibration
         CalPoint calPoints[CAL_NPOINTS] = {
-            {0.120, 50.0f},
-            {1.247, 100.0f},
+            // {0.120, 50.0f},
+            // {1.247, 100.0f},
             {2.635, 150.0f},
             {3.904, 200.0f},
             {5.275, 250.0f},
             {6.660, 300.0f},
             {8.098, 350.0f},
             {9.350, 400.0f},
-            {10.900, 450.0f}};
+            {10.900, 450.0f},
+        };
 
         double coeffs[CAL_NCOEFFS];
     };

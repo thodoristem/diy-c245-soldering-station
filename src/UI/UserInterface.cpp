@@ -155,7 +155,7 @@ void UserInterface::onPress()
             case PAGE_CAL_POINTS:
                 this->selectedLevel = OPTION_EDIT;
                 this->iron->initCal();
-                this->iron->setTargetTemp(this->iron->getCalPoint(this->selectedOption).tempC);
+                this->iron->setTargetTemp(this->iron->getCalPoint(this->selectedOption - 1).tempC);
                 this->iron->setStatus(Iron::Status::STATUS_HEATING);
                 break;
             default:
@@ -170,7 +170,7 @@ void UserInterface::onPress()
         case PAGE_CAL_POINTS:
             this->selectedLevel = OPTION_SELECT;
             this->iron->init();
-            this->iron->setCalPointMv(this->selectedOption, this->iron->getHeaterTempMV());
+            this->iron->setCalPointMv(this->selectedOption - 1, this->iron->getHeaterTempMV());
             // this->iron->tempCoefficientCalculation();
             this->iron->setStatus(Iron::Status::STATUS_IDLE);
             this->iron->setTargetTemp(this->iron->getSetting(Iron::SettingType::GENERAL_SETTINGS, Iron::GeneralSettings::INITIAL_TEMP).value);
@@ -335,7 +335,7 @@ void UserInterface::showGeneralSettingsPage()
         this->maxOptionsVisible = 3;
         this->minOptionCount = 0;
         this->maxOptionCount = GENERAL_SETTINGS_COUNT;
-        this->selectedOption = 0;
+        this->selectedOption = 1;
         this->viewInit = false;
     }
 
@@ -352,7 +352,7 @@ void UserInterface::showPIDPage()
         this->maxOptionsVisible = 3;
         this->minOptionCount = 0;
         this->maxOptionCount = PID_SETTINGS_COUNT;
-        this->selectedOption = 0;
+        this->selectedOption = 1;
         this->viewInit = false;
     }
 
@@ -369,7 +369,7 @@ void UserInterface::showOpAmpPage()
         this->maxOptionsVisible = 3;
         this->minOptionCount = 0;
         this->maxOptionCount = OPAMP_SETTINGS_COUNT;
-        this->selectedOption = 0;
+        this->selectedOption = 1;
         this->viewInit = false;
     }
 
@@ -385,32 +385,33 @@ void UserInterface::showCalPointsPage()
         this->optionOffset = 0;
         this->maxOptionsVisible = 3;
         this->minOptionCount = 0;
-        this->maxOptionCount = CAL_NPOINTS - 1;
+        this->maxOptionCount = CAL_NPOINTS;
         this->selectedOption = 1;
         this->viewInit = false;
     }
 
     this->drawTitle("TIP CALIBRATION", 12);
 
-    String label;
     bool selected = false;
-
+    String label;
+    uint8_t index = 0;
     int xOffset = 12;
     int yOffset = 22;
 
-    for (int i = this->optionOffset + 1; i < CAL_NPOINTS; i++)
+    for (uint8_t i = this->optionOffset + 1; i <= CAL_NPOINTS; i++)
     {
+        index = i - 1;
         selected = (this->selectedLevel == OPTION_SELECT || this->selectedLevel == OPTION_EDIT) && this->selectedOption == i;
 
         if (this->selectedOption == i && this->selectedLevel == OPTION_EDIT)
         {
-            label = String((int)this->iron->getHeaterTemp()) + "-" + String((int)this->iron->getCalPoint(i).tempC) + "C: ";
-            label += String((int)(this->iron->getTargetTemp() - this->iron->getCalPoint(i).tempC));
+            label = String((int)this->iron->getHeaterTemp()) + "-" + String((int)this->iron->getCalPoint(index).tempC) + "C: ";
+            label += String((int)(this->iron->getTargetTemp() - this->iron->getCalPoint(index).tempC));
         }
         else
         {
-            label = String((int)this->iron->getCalPoint(i).tempC) + "C: ";
-            label += String(this->iron->getCalPoint(i).mV, 3) + "mV";
+            label = String((int)this->iron->getCalPoint(index).tempC) + "C: ";
+            label += String(this->iron->getCalPoint(index).mV, 3) + "mV";
         }
 
         if (selected)

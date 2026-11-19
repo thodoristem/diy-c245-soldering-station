@@ -65,8 +65,8 @@ void Iron::init()
 void Iron::initCal()
 {
     this->setOutputRange(0.0f, 50.0f);
-    this->minTemp = this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MIN_TEMP).value - 25;
-    this->maxTemp = this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_TEMP).value + 25;
+    this->minTemp = this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MIN_TEMP).value - 100;
+    this->maxTemp = this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_TEMP).value + 100;
 }
 
 void Iron::setOutputRange(float minPCT, float maxPCT)
