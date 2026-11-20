@@ -14,11 +14,11 @@ void UserInterface::init()
 
 void UserInterface::run()
 {
-    unsigned long lcdEndMS = millis();
+    this->lcdEndMS = millis();
 
-    if (lcdEndMS - lcdStartMS >= LCD_INTERVAL_MS)
+    if (this->lcdEndMS - this->lcdStartMS >= LCD_INTERVAL_MS)
     {
-        lcdStartMS = lcdEndMS;
+        this->lcdStartMS = this->lcdEndMS;
 
         this->lcd->clearBuffer();
 
@@ -41,6 +41,10 @@ void UserInterface::run()
             break;
         case PAGE_CAL_POINTS:
             this->showCalPointsPage();
+            if (this->iron->getStatus() == Iron::Status::STATUS_FAULT && this->selectedLevel == OPTION_EDIT)
+            {
+                this->selectedLevel = OPTION_SELECT;
+            }
             break;
         case PAGE_RESET:
             this->showResetPage();
@@ -169,11 +173,10 @@ void UserInterface::onPress()
         {
         case PAGE_CAL_POINTS:
             this->selectedLevel = OPTION_SELECT;
-            this->iron->init();
             this->iron->setCalPointMv(this->selectedOption - 1, this->iron->getHeaterTempMV());
-            // this->iron->tempCoefficientCalculation();
             this->iron->setStatus(Iron::Status::STATUS_IDLE);
-            this->iron->setTargetTemp(this->iron->getSetting(Iron::SettingType::GENERAL_SETTINGS, Iron::GeneralSettings::INITIAL_TEMP).value);
+            this->iron->setTargetTemp(this->iron->getSetting(Iron::SettingType::GENERAL_SETTINGS, Iron::GeneralSettings::INITIAL_TEMP_SET).value);
+            this->iron->tempCoefficientCalculation();
             break;
         default:
             this->selectedLevel = OPTION_SELECT;
@@ -194,6 +197,7 @@ void UserInterface::onLongPress()
         break;
     default:
         this->selectView(View::DASHBOARD);
+        this->iron->saveSettings();
         this->iron->init();
         break;
     }
@@ -261,7 +265,7 @@ void UserInterface::showDashboard()
         this->minOptionCount = 0;
         this->maxOptionCount = 0;
         this->selectedOption = 0;
-
+        this->optionOffset = 0;
         this->viewInit = false;
     }
 
@@ -290,6 +294,12 @@ void UserInterface::showDashboard()
     this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(ironTemp)) / 2, this->lcd->getHeight() / 2);
     this->lcd->print(ironTemp);
 
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    this->lcd->setCursor(15, 18);
+    this->lcd->print(this->iron->getStoredData().saveCount);
+    this->lcd->setCursor(15, 28);
+    this->lcd->print(sizeof(this->iron->getStoredData()));
+
     this->drawStatus();
 }
 
@@ -301,6 +311,7 @@ void UserInterface::showMenu()
         this->minOptionCount = 0;
         this->maxOptionCount = 4;
         this->selectedOption = 0;
+        this->optionOffset = 0;
         this->iron->setStatus(Iron::Status::STATUS_IDLE);
 
         this->viewInit = false;
@@ -395,7 +406,7 @@ void UserInterface::showCalPointsPage()
     bool selected = false;
     String label;
     uint8_t index = 0;
-    int xOffset = 12;
+    int xOffset = 4;
     int yOffset = 22;
 
     for (uint8_t i = this->optionOffset + 1; i <= CAL_NPOINTS; i++)
@@ -503,7 +514,7 @@ void UserInterface::drawSelect(Iron::SettingType settingType, uint8_t maxOptions
         selected = (this->selectedLevel == OPTION_SELECT || this->selectedLevel == OPTION_EDIT) && this->selectedOption == i;
         decPlaces = this->iron->getSetting(settingType, index).decPlaces;
         value = this->iron->getSetting(settingType, index).value;
-        label = String(this->iron->getSetting(settingType, index).label + ": ");
+        label = String(this->iron->getSetting(settingType, index).label) + String(": ");
         unit = String(this->iron->getSetting(settingType, index).unit);
 
         if (decPlaces == 0)
@@ -548,6 +559,7 @@ void UserInterface::drawStatus()
     case Iron::Status::STATUS_IDLE:
         status = "IDLE";
         break;
+    case Iron::Status::STATUS_SCREENSAVER:
     case Iron::Status::STATUS_STAND_BY:
         status = "STAND BY";
         break;

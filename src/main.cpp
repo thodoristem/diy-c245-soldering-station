@@ -16,7 +16,7 @@
 
 #define BTN_DEBOUNCE_MS 0
 #define BTN_LONG_PRESS_MS 1000
-#define BTN_CLICK_MS 2
+#define BTN_CLICK_MS 1
 #define BTN_PRESS_MS 2
 
 Iron iron(

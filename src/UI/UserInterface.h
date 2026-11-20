@@ -4,7 +4,7 @@
 #include <Iron/Iron.h>
 #include <U8g2lib.h>
 
-#define LCD_INTERVAL_MS 60
+#define LCD_INTERVAL_MS 5
 
 class UserInterface
 {
@@ -33,6 +33,7 @@ private:
     U8G2 *lcd;
 
     unsigned long lcdStartMS;
+    unsigned long lcdEndMS;
 
     SelectLevel selectedLevel = HOME;
     View selectedView = DASHBOARD;
@@ -42,8 +43,6 @@ private:
     uint8_t maxOptionsVisible = 0;
     uint8_t minOptionCount = 0;
     uint8_t maxOptionCount = 0;
-
-    bool btnEventPaused = false;
 
     void prevSelection();
     void nextSelection();
