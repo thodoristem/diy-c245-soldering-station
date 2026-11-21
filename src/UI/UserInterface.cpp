@@ -570,7 +570,7 @@ void UserInterface::drawStatus()
         break;
     case Iron::Status::STATUS_SCREENSAVER:
     case Iron::Status::STATUS_STAND_BY:
-        status = "STAND BY";
+        status = "STANDBY";
         break;
     }
 

@@ -128,13 +128,13 @@ private:
             {"Temp Step", 1.0f, 50.0f, 10.0f, 1.0f, 0, "C"},
             {"Max Output", 10.0f, 90.0f, 75.0f, 1.0f, 0, "%"},
             {"Initial Temp", 150.0f, 400.0f, 250.0f, 5.0f, 0, "C"},
-            {"Stand-By Temp", 100.0f, 300.0f, 150.0f, 5.0f, 0, "C"},
+            {"Stand-By Temp", 150.0f, 250.0f, 150.0f, 5.0f, 0, "C"},
             {"Beeper", 0, 1, 0, 1, 0, ""}};
 
         Iron::Setting pidSettings[PID_SETTINGS_COUNT] = {
-            {"KP", 0.0f, 20.0f, 10.0f, 0.1f, 1, ""},
-            {"KI", 0.0f, 20.0f, 5.0f, 0.1f, 1, ""},
-            {"KD", 0.0f, 20.0f, 1.0f, 0.1f, 1, ""}};
+            {"KP", 0.0f, 50.0f, 10.0f, 0.1f, 1, ""},
+            {"KI", 0.0f, 50.0f, 5.0f, 0.1f, 1, ""},
+            {"KD", 0.0f, 50.0f, 1.0f, 0.1f, 1, ""}};
 
         Iron::Setting opAmpSettings[OPAMP_SETTINGS_COUNT] = {
             {"Vref", 0.0f, 3.3f, 3.285, 0.001f, 3, "V"},
