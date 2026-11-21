@@ -9,10 +9,10 @@
 #define ADC_MAX 4095
 
 #define PWM_FREQ 21000
-#define PWM_BITS 12
-#define PWM_MAX 4095
+#define PWM_BITS 10
+#define PWM_MAX 1023
 
-#define TEMP_MEASURE_SAMPLES_TIME_MS 25UL // 40 samples per sec in ms
+#define TEMP_MEASURE_SAMPLES_TIME_MS 1000 / 40 // 40 samples per sec in ms
 #define TEMP_MEASURE_SAMPLES 30
 #define TEMP_MEASURE_SETTLE_TIME_US 500
 
@@ -21,12 +21,13 @@
 #define HEATER_CHECK_INTERVAL_MS 2000
 #define HEATER_CHECK_MIN_TEMP_RIZE 2.0f
 
-#define EEPROM_MAGIC 0xC245A000UL
-#define GENERAL_SETTINGS_COUNT 7
+#define EEPROM_MAGIC 0xC245A100UL
+
+#define GENERAL_SETTINGS_COUNT 5
 #define PID_SETTINGS_COUNT 3
 #define OPAMP_SETTINGS_COUNT 3
 
-#define CAL_NPOINTS 7
+#define CAL_NPOINTS 6
 #define CAL_ORDER 3
 #define CAL_NCOEFFS CAL_ORDER + 1
 
@@ -63,8 +64,6 @@ public:
 
     enum GeneralSettings : uint8_t
     {
-        MIN_TEMP_SET,
-        MAX_TEMP_SET,
         TEMP_SELECT_STEP_SET,
         MAX_OUTPUT_PCT_SET,
         INITIAL_TEMP_SET,
@@ -124,18 +123,16 @@ private:
         bool changed = false;
 
         Iron::Setting generalSettings[GENERAL_SETTINGS_COUNT] = {
-            {"Min Temp", 150.0f, 250.0f, 150.0f, 5.0f, 0, "C"},
-            {"Max Temp", 250.0f, 450.0f, 450.0f, 5.0f, 0, "C"},
             {"Temp Step", 1.0f, 50.0f, 10.0f, 1.0f, 0, "C"},
             {"Max Output", 10.0f, 90.0f, 75.0f, 1.0f, 0, "%"},
-            {"Initial Temp", 50.0f, 400.0f, 250.0f, 5.0f, 0, "C"},
-            {"Stand-By Temp", 50.0f, 200.0f, 150.0f, 5.0f, 0, "C"},
+            {"Initial Temp", 150.0f, 400.0f, 250.0f, 5.0f, 0, "C"},
+            {"Stand-By Temp", 100.0f, 300.0f, 150.0f, 5.0f, 0, "C"},
             {"Beeper", 0, 1, 0, 1, 0, ""}};
 
         Iron::Setting pidSettings[PID_SETTINGS_COUNT] = {
             {"KP", 0.0f, 20.0f, 10.0f, 0.1f, 1, ""},
-            {"KI", 0.0f, 20.0f, 1.0f, 0.1f, 1, ""},
-            {"KD", 0.0f, 20.0f, 0.5f, 0.1f, 1, ""}};
+            {"KI", 0.0f, 20.0f, 5.0f, 0.1f, 1, ""},
+            {"KD", 0.0f, 20.0f, 1.0f, 0.1f, 1, ""}};
 
         Iron::Setting opAmpSettings[OPAMP_SETTINGS_COUNT] = {
             {"Vref", 0.0f, 3.3f, 3.285, 0.001f, 3, "V"},
@@ -148,8 +145,7 @@ private:
             {5.982f, 250.0f},
             {7.455f, 300.0f},
             {8.872f, 350.0f},
-            {10.248f, 400.0f},
-            {11.541f, 450.0f}};
+            {10.248f, 400.0f}};
     };
 
     float vRef = 3.3f;
@@ -176,10 +172,9 @@ private:
     bool tempMeasureActive = true;
     unsigned long tempMeasureStart = 0;
 
-    float heaterCheckTemp = 0;
-    unsigned long heaterCheckStart = 0;
-
     bool heaterCheckActive = false;
+    unsigned long heaterCheckStart = 0;
+    float heaterCheckTemp = 0;
 
     Status status = STATUS_IDLE;
 

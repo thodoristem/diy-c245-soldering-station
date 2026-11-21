@@ -194,11 +194,13 @@ void UserInterface::onLongPress()
     {
     case DASHBOARD:
         this->selectView(View::MENU);
+        this->iron->standBy();
         break;
     default:
         this->selectView(View::DASHBOARD);
         this->iron->saveSettings();
         this->iron->init();
+        this->iron->pickUp();
         break;
     }
 }
@@ -295,9 +297,9 @@ void UserInterface::showDashboard()
     this->lcd->print(ironTemp);
 
     // Debug EEPROM
-    this->lcd->setFont(u8g2_font_spleen6x12_mf);
-    this->lcd->setCursor(14, 18);
-    this->lcd->print(this->iron->getStoredData().saveCount);
+    // this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    // this->lcd->setCursor(14, 18);
+    // this->lcd->print(this->iron->getStoredData().saveCount);
     // this->lcd->setCursor(15, 28);
     // this->lcd->print(sizeof(this->iron->getStoredData()));
 
@@ -313,8 +315,6 @@ void UserInterface::showMenu()
         this->maxOptionCount = 4;
         this->selectedOption = 0;
         this->optionOffset = 0;
-        this->iron->setStatus(Iron::Status::STATUS_IDLE);
-
         this->viewInit = false;
     }
 

@@ -1,7 +1,8 @@
 #include <Iron/Iron.h>
 #include <FlashStorage_STM32F1.h>
+
 #define FLASH_DEBUG 0
-// #define USING_FLASH_SECTOR_NUMBER 62
+#define EEPROM_EMULATION_SIZE 256
 
 Iron::Iron(
     uint8_t heaterOutputPin,
@@ -27,17 +28,16 @@ void Iron::init()
 {
     delay(500);
 
-    this->heaterOutputOff();
     this->loadSettings();
     this->tempCoefficientCalculation();
 
     this->vRef = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::VREF_SET).value;
     this->opAmpGain = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_GAIN_SET).value;
     this->opAmpZeroOutputV = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_ZERO_OUTPUT_V_SET).value;
-    this->setOutputRange(0.0f, this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_OUTPUT_PCT_SET).value);
-    this->minTemp = this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MIN_TEMP_SET).value;
-    this->maxTemp = this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_TEMP_SET).value;
+    this->minTemp = this->getCalPoint(0).tempC;
+    this->maxTemp = this->getCalPoint(CAL_NPOINTS - 1).tempC;
     this->setTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::INITIAL_TEMP_SET).value);
+    this->setOutputRange(0.0f, this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_OUTPUT_PCT_SET).value);
 
     this->readTemp();
 
@@ -49,7 +49,7 @@ void Iron::init()
         this->getSetting(SettingType::PID_SETTINGS, PidSettings::PID_KI_SET).value,
         this->getSetting(SettingType::PID_SETTINGS, PidSettings::PID_KD_SET).value,
         QuickPID::pMode::pOnError,
-        QuickPID::dMode::dOnMeas,
+        QuickPID::dMode::dOnError,
         QuickPID::iAwMode::iAwCondition,
         QuickPID::Action::direct);
 
@@ -62,10 +62,8 @@ void Iron::init()
 
 void Iron::initCal()
 {
-    this->setOutputRange(0.0f, 70.0f);
-    this->minTemp = this->getCalPoint(0).tempC - 100;
-    this->maxTemp = this->getCalPoint(CAL_NPOINTS - 1).tempC + 100;
-    this->pid->SetTunings(8.0f, 0.5f, 1.0f);
+    this->minTemp -= 100;
+    this->maxTemp += 100;
 }
 
 void Iron::setOutputRange(float minPCT, float maxPCT)
@@ -113,8 +111,6 @@ void Iron::saveSettings()
     }
 
     this->configuration.changed = false;
-
-    delay(500);
 }
 
 void Iron::loadSettings()
