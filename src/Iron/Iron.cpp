@@ -2,7 +2,6 @@
 #include <FlashStorage_STM32F1.h>
 
 #define FLASH_DEBUG 0
-#define EEPROM_EMULATION_SIZE 256
 
 Iron::Iron(
     uint8_t heaterOutputPin,
@@ -79,7 +78,7 @@ void Iron::saveSettings()
         return;
     }
 
-    for (uint8_t i = 0; i < 4; i++)
+    for (uint8_t i = 0; i < EEPROM_DATA_TYPE_COUNT; i++)
     {
         for (uint8_t j = 0; j < Iron::getSettingsCountForType(i); j++)
         {
@@ -111,6 +110,8 @@ void Iron::saveSettings()
     }
 
     this->configuration.changed = false;
+
+    delay(1000);
 }
 
 void Iron::loadSettings()
@@ -127,7 +128,7 @@ void Iron::loadSettings()
 
     this->storedData = tempStoredData;
 
-    for (uint8_t i = 0; i < 4; i++)
+    for (uint8_t i = 0; i < EEPROM_DATA_TYPE_COUNT; i++)
     {
         for (uint8_t j = 0; j < Iron::getSettingsCountForType(i); j++)
         {
@@ -223,7 +224,7 @@ void Iron::run()
 
 void Iron::runPID()
 {
-    if (this->status != STATUS_FAULT && this->status != STATUS_IDLE)
+    if (this->status != STATUS_FAULT && this->status != STATUS_OFF)
     {
         if (this->pid->Compute())
         {
@@ -294,8 +295,10 @@ void Iron::toggle()
 {
     switch (this->getStatus())
     {
+    case STATUS_FAULT:
+    case STATUS_STAND_BY:
     case STATUS_HEATING:
-        this->setStatus(STATUS_IDLE);
+        this->setStatus(STATUS_OFF);
         this->playTone(SoundEvent::SOUND_HEATER_OFF);
         break;
     default:

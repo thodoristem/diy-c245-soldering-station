@@ -174,8 +174,8 @@ void UserInterface::onPress()
         case PAGE_CAL_POINTS:
             this->selectedLevel = OPTION_SELECT;
             this->iron->setCalPointMv(this->selectedOption - 1, this->iron->getHeaterTempMV());
-            this->iron->setStatus(Iron::Status::STATUS_IDLE);
             this->iron->setTargetTemp(this->iron->getSetting(Iron::SettingType::GENERAL_SETTINGS, Iron::GeneralSettings::INITIAL_TEMP_SET).value);
+            this->iron->setStatus(Iron::Status::STATUS_OFF);
             this->iron->tempCoefficientCalculation();
             break;
         default:
@@ -194,13 +194,12 @@ void UserInterface::onLongPress()
     {
     case DASHBOARD:
         this->selectView(View::MENU);
-        this->iron->standBy();
+        this->iron->setStatus(Iron::Status::STATUS_OFF);
         break;
     default:
         this->selectView(View::DASHBOARD);
         this->iron->saveSettings();
         this->iron->init();
-        this->iron->pickUp();
         break;
     }
 }
@@ -297,11 +296,11 @@ void UserInterface::showDashboard()
     this->lcd->print(ironTemp);
 
     // Debug EEPROM
-    // this->lcd->setFont(u8g2_font_spleen6x12_mf);
-    // this->lcd->setCursor(14, 18);
-    // this->lcd->print(this->iron->getStoredData().saveCount);
-    // this->lcd->setCursor(15, 28);
-    // this->lcd->print(sizeof(this->iron->getStoredData()));
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    this->lcd->setCursor(14, 18);
+    this->lcd->print(this->iron->getStoredData().saveCount);
+    this->lcd->setCursor(14, 28);
+    this->lcd->print(sizeof(this->iron->getStoredData()));
 
     this->drawStatus();
 }
@@ -566,8 +565,8 @@ void UserInterface::drawStatus()
     case Iron::Status::STATUS_FAULT:
         status = "ERROR";
         break;
-    case Iron::Status::STATUS_IDLE:
-        status = "IDLE";
+    case Iron::Status::STATUS_OFF:
+        status = "HEATER OFF";
         break;
     case Iron::Status::STATUS_SCREENSAVER:
     case Iron::Status::STATUS_STAND_BY:

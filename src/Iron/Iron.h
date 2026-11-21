@@ -21,7 +21,9 @@
 #define HEATER_CHECK_INTERVAL_MS 2000
 #define HEATER_CHECK_MIN_TEMP_RIZE 2.0f
 
-#define EEPROM_MAGIC 0xC245A100UL
+#define EEPROM_MAGIC 0xC245A000UL
+#define EEPROM_DATA_TYPE_COUNT 4
+#define EEPROM_DATA_SETTINGS_COUNT 8
 
 #define GENERAL_SETTINGS_COUNT 5
 #define PID_SETTINGS_COUNT 3
@@ -36,7 +38,7 @@ class Iron
 public:
     enum Status : uint8_t
     {
-        STATUS_IDLE,
+        STATUS_OFF,
         STATUS_HEATING,
         STATUS_FAULT,
         STATUS_STAND_BY,
@@ -115,7 +117,7 @@ private:
     {
         uint32_t magic = EEPROM_MAGIC;
         uint32_t saveCount = 0;
-        float data[4][10];
+        float data[EEPROM_DATA_TYPE_COUNT][EEPROM_DATA_SETTINGS_COUNT];
     };
 
     struct Configuration
@@ -176,7 +178,7 @@ private:
     unsigned long heaterCheckStart = 0;
     float heaterCheckTemp = 0;
 
-    Status status = STATUS_IDLE;
+    Status status = STATUS_OFF;
 
     Configuration configuration;
     StoredData storedData;
