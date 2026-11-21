@@ -9,8 +9,8 @@
 #define ADC_MAX 4095
 
 #define PWM_FREQ 21000
-#define PWM_BITS 10
-#define PWM_MAX 1023
+#define PWM_BITS 12
+#define PWM_MAX 4095
 
 #define TEMP_MEASURE_SAMPLES_TIME_MS 25UL // 40 samples per sec in ms
 #define TEMP_MEASURE_SAMPLES 30

@@ -295,9 +295,9 @@ void UserInterface::showDashboard()
     this->lcd->print(ironTemp);
 
     // Debug EEPROM
-    // this->lcd->setFont(u8g2_font_spleen6x12_mf);
-    // this->lcd->setCursor(15, 18);
-    // this->lcd->print(this->iron->getStoredData().saveCount);
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    this->lcd->setCursor(14, 18);
+    this->lcd->print(this->iron->getStoredData().saveCount);
     // this->lcd->setCursor(15, 28);
     // this->lcd->print(sizeof(this->iron->getStoredData()));
 
@@ -352,7 +352,7 @@ void UserInterface::showGeneralSettingsPage()
     }
 
     this->drawTitle("GENERAL SETTINGS", 12);
-    this->drawSelect(Iron::SettingType::GENERAL_SETTINGS, GENERAL_SETTINGS_COUNT, this->maxOptionsVisible, 4, 22);
+    this->drawSelect(Iron::SettingType::GENERAL_SETTINGS, GENERAL_SETTINGS_COUNT, this->maxOptionsVisible, 2, 22);
 }
 
 void UserInterface::showPIDPage()
@@ -369,7 +369,7 @@ void UserInterface::showPIDPage()
     }
 
     this->drawTitle("PID TUNING", 12);
-    this->drawSelect(Iron::SettingType::PID_SETTINGS, PID_SETTINGS_COUNT, this->maxOptionsVisible, 4, 22);
+    this->drawSelect(Iron::SettingType::PID_SETTINGS, PID_SETTINGS_COUNT, this->maxOptionsVisible, 2, 22);
 }
 
 void UserInterface::showOpAmpPage()
@@ -386,7 +386,7 @@ void UserInterface::showOpAmpPage()
     }
 
     this->drawTitle("OP AMP SETTINGS", 12);
-    this->drawSelect(Iron::SettingType::OPAMP_SETTINGS, OPAMP_SETTINGS_COUNT, this->maxOptionsVisible, 4, 22);
+    this->drawSelect(Iron::SettingType::OPAMP_SETTINGS, OPAMP_SETTINGS_COUNT, this->maxOptionsVisible, 2, 22);
 }
 
 void UserInterface::showCalPointsPage()
@@ -407,7 +407,7 @@ void UserInterface::showCalPointsPage()
     bool selected = false;
     String label;
     uint8_t index = 0;
-    int xOffset = 4;
+    int xOffset = 2;
     int yOffset = 22;
 
     for (uint8_t i = this->optionOffset + 1; i <= CAL_NPOINTS; i++)
@@ -415,14 +415,14 @@ void UserInterface::showCalPointsPage()
         index = i - 1;
         selected = (this->selectedLevel == OPTION_SELECT || this->selectedLevel == OPTION_EDIT) && this->selectedOption == i;
 
+        label = String((int)this->iron->getCalPoint(index).tempC) + "C: ";
+
         if (this->selectedOption == i && this->selectedLevel == OPTION_EDIT)
         {
-            label = String((int)this->iron->getHeaterTemp()) + "-" + String((int)this->iron->getCalPoint(index).tempC) + "C: ";
             label += String((int)(this->iron->getTargetTemp() - this->iron->getCalPoint(index).tempC));
         }
         else
         {
-            label = String((int)this->iron->getCalPoint(index).tempC) + "C: ";
             label += String(this->iron->getCalPoint(index).mV, 3) + "mV";
         }
 
@@ -438,10 +438,19 @@ void UserInterface::showCalPointsPage()
             }
         }
 
-        this->drawOption(label, xOffset, yOffset, 2, selected);
+        this->drawOption(label, u8g2_font_spleen6x12_mf, xOffset, yOffset, 12, 2, selected);
 
         yOffset += 16;
     }
+
+    // this->lcd->setFont(u8g2_font_spleen5x8_mf);
+
+    label = String((int)this->iron->getHeaterTemp()) + "C";
+    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 2, 22, label.c_str());
+    label = String(this->iron->getHeaterTempMV(), 2);
+    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 2, 35, label.c_str());
+    label = String((int)this->iron->getHeaterOutputPct()) + "%";
+    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 2, 47, label.c_str());
 }
 
 void UserInterface::showResetPage()
@@ -468,22 +477,22 @@ void UserInterface::drawTitle(String title, uint8_t height)
 
     if (this->selectedLevel == OPTION_SELECT || this->selectedLevel == OPTION_EDIT)
     {
-        this->drawOption("X", 1, height / 2, 1, this->selectedOption == 0);
+        this->drawOption("X", u8g2_font_spleen5x8_mf, 1, height / 2, 8, 1, this->selectedOption == 0);
         this->lcd->drawFrame(0, 0, this->lcd->getWidth(), this->lcd->getHeight());
     }
 
     this->lcd->drawBox(1, 1, this->lcd->getWidth() - 2, height - 1);
 }
 
-void UserInterface::drawOption(String label, uint8_t x, uint8_t y, uint8_t p, bool selected)
+void UserInterface::drawOption(String label, const uint8_t *font, uint8_t x, uint8_t y, uint8_t h, uint8_t p, bool selected)
 {
-    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    this->lcd->setFont(font);
     this->lcd->setFontPosCenter();
 
     uint8_t w = this->lcd->getStrWidth(label.c_str());
     w = w + p * 2 + 1;
 
-    uint8_t h = 12 + p * 2;
+    uint8_t height = h + p * 2;
 
     this->lcd->drawUTF8(x + p + 1, y + 1, label.c_str());
 
@@ -491,11 +500,11 @@ void UserInterface::drawOption(String label, uint8_t x, uint8_t y, uint8_t p, bo
     {
         if (this->selectedLevel == OPTION_EDIT)
         {
-            this->lcd->drawBox(x, y - h / 2, w, h);
+            this->lcd->drawBox(x, y - height / 2, w, height);
         }
         else
         {
-            this->lcd->drawFrame(x, y - h / 2, w, h);
+            this->lcd->drawFrame(x, y - height / 2, w, height);
         }
     }
 }
@@ -539,7 +548,7 @@ void UserInterface::drawSelect(Iron::SettingType settingType, uint8_t maxOptions
             }
         }
 
-        this->drawOption(label, xOffset, yOffset, 2, selected);
+        this->drawOption(label, u8g2_font_spleen6x12_mf, xOffset, yOffset, 12, 2, selected);
 
         yOffset += 16;
     }
