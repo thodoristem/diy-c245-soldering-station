@@ -30,6 +30,7 @@ void Iron::init()
     this->loadSettings();
     this->tempCoefficientCalculation();
 
+    this->disableStandBy = false;
     this->vRef = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::VREF_SET).value;
     this->opAmpGain = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_GAIN_SET).value;
     this->opAmpZeroOutputV = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_ZERO_OUTPUT_V_SET).value;
@@ -56,6 +57,7 @@ void Iron::init()
     this->pid->SetOutputLimits(this->minOutput, this->maxOutput);
     this->pid->SetSampleTimeUs(PID_SAMPLES_TIME_US);
 
+    this->standBy();
     this->playTone(SoundEvent::SOUND_INIT);
 }
 
@@ -63,6 +65,7 @@ void Iron::initCal()
 {
     this->minTemp -= 100;
     this->maxTemp += 100;
+    this->disableStandBy = true;
 }
 
 void Iron::setOutputRange(float minPCT, float maxPCT)
@@ -111,7 +114,7 @@ void Iron::saveSettings()
 
     this->configuration.changed = false;
 
-    delay(1000);
+    delay(3000);
 }
 
 void Iron::loadSettings()
@@ -295,8 +298,9 @@ void Iron::toggle()
 {
     switch (this->getStatus())
     {
-    case STATUS_FAULT:
     case STATUS_STAND_BY:
+        return;
+    case STATUS_FAULT:
     case STATUS_HEATING:
         this->setStatus(STATUS_OFF);
         this->playTone(SoundEvent::SOUND_HEATER_OFF);
@@ -310,6 +314,11 @@ void Iron::toggle()
 
 void Iron::standBy()
 {
+    if (this->disableStandBy)
+    {
+        return;
+    }
+
     if (this->getStatus() != Iron::Status::STATUS_STAND_BY)
     {
         this->pickUpTemp = this->getTargetTemp();

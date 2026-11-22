@@ -94,8 +94,6 @@ private:
     uint8_t heaterTempPin;
     uint8_t beeperPin;
 
-    bool invertedOutput = true;
-
     struct CalPoint
     {
         float mV;
@@ -158,7 +156,9 @@ private:
 
     float targetTemp = 200.0f;
     float pickUpTemp = 200.0f;
+    bool disableStandBy = false;
 
+    bool invertedOutput = true;
     float heaterOutput = 0.0f;
     float minOutput = 0.0f;
     float maxOutput;

@@ -10,6 +10,12 @@ void UserInterface::init()
 {
     this->lcd->begin();
     this->lcd->clear();
+
+    this->lcd->clearBuffer();
+    this->showIntro();
+    this->lcd->sendBuffer();
+
+    delay(5000);
 }
 
 void UserInterface::run()
@@ -194,12 +200,13 @@ void UserInterface::onLongPress()
     {
     case DASHBOARD:
         this->selectView(View::MENU);
-        this->iron->setStatus(Iron::Status::STATUS_OFF);
+        this->iron->standBy();
         break;
     default:
         this->selectView(View::DASHBOARD);
         this->iron->saveSettings();
         this->iron->init();
+        this->iron->standBy();
         break;
     }
 }
@@ -256,6 +263,23 @@ void UserInterface::incOptionOffset(uint8_t limit)
     {
         this->optionOffset = limit;
     }
+}
+
+void UserInterface::showIntro()
+{
+    String label;
+
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    this->lcd->setFontPosBottom();
+
+    label = String("DIY");
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 14, label.c_str());
+    label = String("C245/T12");
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 14 * 2, label.c_str());
+    label = String("Soldering Station");
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 14 * 3, label.c_str());
+    label = String("By T.Temourtzidis");
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 14 * 4, label.c_str());
 }
 
 void UserInterface::showDashboard()
@@ -570,7 +594,7 @@ void UserInterface::drawStatus()
         break;
     case Iron::Status::STATUS_SCREENSAVER:
     case Iron::Status::STATUS_STAND_BY:
-        status = "STANDBY";
+        status = "STAND-BY";
         break;
     }
 
