@@ -58,7 +58,7 @@ void Iron::init()
 
     this->disableStandBy = false;
     this->setStatus(Status::STATUS_OFF);
-    this->standBy();
+    this->sleep();
     this->playTone(SoundEvent::SOUND_INIT);
 }
 
@@ -306,7 +306,7 @@ void Iron::toggle()
 {
     switch (this->getStatus())
     {
-    case STATUS_STAND_BY:
+    case STATUS_SLEEP:
         return;
     case STATUS_FAULT:
     case STATUS_HEATING:
@@ -320,27 +320,27 @@ void Iron::toggle()
     }
 }
 
-void Iron::standBy()
+void Iron::sleep()
 {
     if (this->disableStandBy)
     {
         return;
     }
 
-    if (this->getStatus() != Iron::Status::STATUS_STAND_BY)
+    if (this->getStatus() != Iron::Status::STATUS_SLEEP)
     {
-        this->pickUpTemp = this->getTargetTemp();
-        this->setTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::STAND_BY_TEMP_SET).value);
-        this->setStatus(Iron::Status::STATUS_STAND_BY);
+        this->wakeTemp = this->getTargetTemp();
+        this->setTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::SLEEP_TEMP_SET).value);
+        this->setStatus(Iron::Status::STATUS_SLEEP);
         this->playTone(SoundEvent::SOUND_HEATER_OFF);
     }
 }
 
-void Iron::pickUp()
+void Iron::wake()
 {
-    if (this->getStatus() == Iron::Status::STATUS_STAND_BY)
+    if (this->getStatus() == Iron::Status::STATUS_SLEEP)
     {
-        this->setTargetTemp(this->pickUpTemp);
+        this->setTargetTemp(this->wakeTemp);
         this->setStatus(Iron::Status::STATUS_HEATING);
         this->playTone(SoundEvent::SOUND_HEATER_ON);
     }

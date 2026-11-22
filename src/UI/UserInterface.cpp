@@ -200,7 +200,7 @@ void UserInterface::onLongPress()
     {
     case DASHBOARD:
         this->selectView(View::MENU);
-        this->iron->standBy();
+        this->iron->sleep();
         break;
     default:
         this->selectView(View::DASHBOARD);
@@ -304,7 +304,7 @@ void UserInterface::showDashboard()
     sprintf(ironOutput, "%3d%%", (int)this->iron->getHeaterOutputPct());
 
     this->lcd->setFontPosTop();
-    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    this->lcd->setFont(u8g2_font_spleen8x16_mf);
     this->lcd->drawUTF8(14, 0, ironSetTemp);
     this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 14, 0, ironOutput);
 
@@ -319,7 +319,7 @@ void UserInterface::showDashboard()
     this->drawLoadingBar(this->lcd->getWidth() - 11, 0, 11, this->lcd->getHeight(), this->iron->getHeaterOutputPct());
 
     this->lcd->drawUTF8((this->lcd->getWidth() / 2 + 24), this->lcd->getHeight() / 2 - 14, "\u00B0C");
-    this->lcd->setFont(u8g2_font_spleen16x32_mu);
+    this->lcd->setFont(u8g2_font_spleen16x32_mn);
     this->lcd->setFontPosCenter();
     this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(ironTemp)) / 2, this->lcd->getHeight() / 2);
     this->lcd->print(ironTemp);
@@ -591,12 +591,13 @@ void UserInterface::drawStatus()
         status = "HEATER OFF";
         break;
     case Iron::Status::STATUS_SCREENSAVER:
-    case Iron::Status::STATUS_STAND_BY:
-        status = "STAND-BY";
+    case Iron::Status::STATUS_SLEEP:
+        status = "SLEEP";
         break;
     }
 
-    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    // this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    this->lcd->setFont(u8g2_font_spleen8x16_mf);
     this->lcd->setFontPosBottom();
     this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(status.c_str())) / 2, this->lcd->getHeight());
     this->lcd->print(status);

@@ -16,9 +16,9 @@
 #define ENC_BTN_CLICK_MS 0
 #define ENC_BTN_LONG_PRESS_MS 1000
 
-#define STANDBY_SENSE_PIN PB13
-#define STANDBY_DEBOUNCE_MS 50
-#define STANDBY_LONG_PRESS_MS 1
+#define SLEEP_SENSE_PIN PB13
+#define SLEEP_DEBOUNCE_MS 50
+#define SLEEP_LONG_PRESS_MS 1
 
 Iron iron(
     HEATER_OUPUT_PIN,
@@ -36,21 +36,21 @@ U8G2_ST7920_128X64_F_SW_SPI lcd(
 UserInterface ui(&iron, &lcd);
 RotaryEncoder encoder(ENC_A_PIN, ENC_B_PIN, RotaryEncoder::LatchMode::FOUR3);
 OneButton encoderButton;
-OneButton handleSense;
+OneButton sleepSense;
 
 void encoderISR()
 {
     encoder.tick();
 }
 
-void onStandbySense()
+void onSleepSense()
 {
-    iron.standBy();
+    iron.sleep();
 }
 
-void onPickUpSense()
+void onWakeSense()
 {
-    iron.pickUp();
+    iron.wake();
 }
 
 void onEncoderLongPress()
@@ -68,11 +68,11 @@ void setup()
     iron.init();
     ui.init();
 
-    handleSense.setup(STANDBY_SENSE_PIN, INPUT, true);
-    handleSense.setDebounceMs(STANDBY_DEBOUNCE_MS);
-    handleSense.setPressMs(STANDBY_LONG_PRESS_MS);
-    handleSense.attachLongPressStart(onStandbySense);
-    handleSense.attachLongPressStop(onPickUpSense);
+    sleepSense.setup(SLEEP_SENSE_PIN, INPUT, true);
+    sleepSense.setDebounceMs(SLEEP_DEBOUNCE_MS);
+    sleepSense.setPressMs(SLEEP_LONG_PRESS_MS);
+    sleepSense.attachLongPressStart(onSleepSense);
+    sleepSense.attachLongPressStop(onWakeSense);
 
     encoderButton.setup(ENC_BUTTON_PIN, INPUT_PULLUP, true);
     encoderButton.setDebounceMs(ENC_BTN_DEBOUNCE_MS);
@@ -87,7 +87,7 @@ void setup()
 
 void loop()
 {
-    handleSense.tick();
+    sleepSense.tick();
 
     encoderButton.tick();
     switch (encoder.getDirection())

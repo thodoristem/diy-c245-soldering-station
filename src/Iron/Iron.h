@@ -41,8 +41,8 @@ public:
         STATUS_OFF,
         STATUS_HEATING,
         STATUS_FAULT,
-        STATUS_STAND_BY,
-        STATUS_SCREENSAVER
+        STATUS_SLEEP,
+        STATUS_SCREENSAVER // @todo Screen after a while
     };
 
     enum SoundEvent : uint8_t
@@ -69,7 +69,7 @@ public:
         TEMP_SELECT_STEP_SET,
         MAX_OUTPUT_PCT_SET,
         INITIAL_TEMP_SET,
-        STAND_BY_TEMP_SET,
+        SLEEP_TEMP_SET,
         BEEPER_SET
     };
 
@@ -126,7 +126,7 @@ private:
             {"Temp Step", 1.0f, 50.0f, 10.0f, 1.0f, 0, "C"},
             {"Max Output", 10.0f, 90.0f, 75.0f, 1.0f, 0, "%"},
             {"Initial Temp", 150.0f, 400.0f, 250.0f, 5.0f, 0, "C"},
-            {"Stand-By Temp", 150.0f, 250.0f, 150.0f, 5.0f, 0, "C"},
+            {"Sleep Temp", 150.0f, 250.0f, 150.0f, 5.0f, 0, "C"},
             {"Beeper", 0, 1, 0, 1, 0, ""}};
 
         Iron::Setting pidSettings[PID_SETTINGS_COUNT] = {
@@ -155,7 +155,7 @@ private:
     double coeffs[CAL_NCOEFFS];
 
     float targetTemp = 200.0f;
-    float pickUpTemp = 200.0f;
+    float wakeTemp = 200.0f;
     bool disableStandBy = false;
 
     bool invertedOutput = true;
@@ -206,8 +206,8 @@ public:
     void setStatus(Status status);
     void playTone(SoundEvent event);
     void toggle();
-    void standBy();
-    void pickUp();
+    void sleep();
+    void wake();
     void setOutputRange(float min, float max);
     void setTargetTemp(float temp);
     void incTargetTemp();
