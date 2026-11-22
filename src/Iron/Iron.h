@@ -22,7 +22,7 @@
 #define HEATER_CHECK_INTERVAL_MS 2000
 #define HEATER_CHECK_MIN_TEMP_RIZE 2.0f
 
-#define EEPROM_MAGIC 0xC245A000UL
+#define EEPROM_MAGIC 0xC2450001UL
 #define EEPROM_DATA_TYPE_COUNT 4
 #define EEPROM_DATA_SETTINGS_COUNT 8
 
@@ -132,7 +132,7 @@ private:
 
         Iron::Setting pidSettings[PID_SETTINGS_COUNT] = {
             {"KP", 0.0f, 50.0f, 10.0f, 0.1f, 1, ""},
-            {"KI", 0.0f, 50.0f, 5.0f, 0.1f, 1, ""},
+            {"KI", 0.0f, 50.0f, 8.0f, 0.1f, 1, ""},
             {"KD", 0.0f, 50.0f, 1.0f, 0.1f, 1, ""}};
 
         Iron::Setting opAmpSettings[OPAMP_SETTINGS_COUNT] = {
@@ -157,7 +157,7 @@ private:
 
     float targetTemp = 200.0f;
     float wakeTemp = 200.0f;
-    bool disableStandBy = false;
+    bool disableSleep = false;
 
     bool invertedOutput = true;
     float heaterOutput = 0.0f;
@@ -188,7 +188,6 @@ private:
     void readTemp();
     void heaterCheck();
     void heaterOutputUpdate();
-    void heaterOutputOff();
 
 public:
     Iron(
@@ -215,6 +214,7 @@ public:
     void incTargetTemp(float step);
     void decTargetTemp();
     void decTargetTemp(float step);
+    void heaterOutputOff();
     float getHeaterOutput();
     float getHeaterOutputPct();
     float getTargetTemp();

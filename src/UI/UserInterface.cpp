@@ -200,6 +200,7 @@ void UserInterface::onLongPress()
         break;
     default:
         this->selectView(View::DASHBOARD);
+        this->iron->heaterOutputOff();
         this->showSaveMsg();
         this->iron->saveSettings();
         this->iron->init();
@@ -235,7 +236,6 @@ void UserInterface::selectView(View view)
 {
     this->viewInit = true;
     this->selectedView = view;
-    this->lcd->clear();
 }
 
 void UserInterface::decOptionOffset()
@@ -301,12 +301,13 @@ void UserInterface::showSaveMsg()
     else
     {
         label = "Nothing Changed!";
-        delay(2000);
     }
 
     this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, this->lcd->getHeight() / 2, label.c_str());
 
     this->lcd->sendBuffer();
+
+    delay(3000);
 }
 
 void UserInterface::showDashboard()
@@ -337,8 +338,8 @@ void UserInterface::showDashboard()
     this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 15, 0, ironOutput);
 
     // Debug EEPROM
-    this->lcd->setCursor(20, 20);
-    this->lcd->print(this->iron->getStoredData().saveCount);
+    // this->lcd->setCursor(20, 20);
+    // this->lcd->print(this->iron->getStoredData().saveCount);
     // this->lcd->setCursor(14, 28);
     // this->lcd->print(sizeof(this->iron->getStoredData()));
 

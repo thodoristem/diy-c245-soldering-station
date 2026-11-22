@@ -1,7 +1,8 @@
 #include <Iron/Iron.h>
-#include <FlashStorage_STM32F1.h>
 
 #define FLASH_DEBUG 0
+#define USING_FLASH_SECTOR_NUMBER 62
+#include <FlashStorage_STM32F1.h>
 
 Iron::Iron(
     uint8_t heaterOutputPin,
@@ -56,7 +57,7 @@ void Iron::init()
     this->pid->SetOutputLimits(this->minOutput, this->maxOutput);
     this->pid->SetSampleTimeUs(PID_SAMPLES_TIME_US);
 
-    this->disableStandBy = false;
+    this->disableSleep = false;
     this->setStatus(Status::STATUS_OFF);
     this->sleep();
     this->playTone(SoundEvent::SOUND_INIT);
@@ -66,7 +67,7 @@ void Iron::initCal()
 {
     this->minTemp -= 100;
     this->maxTemp += 100;
-    this->disableStandBy = true;
+    this->disableSleep = true;
 }
 
 void Iron::setOutputRange(float minPCT, float maxPCT)
@@ -82,8 +83,6 @@ void Iron::saveSettings()
         return;
     }
 
-    this->heaterOutputOff();
-
     for (uint8_t i = 0; i < EEPROM_DATA_TYPE_COUNT; i++)
     {
         for (uint8_t j = 0; j < Iron::getSettingsCountForType(i); j++)
@@ -92,21 +91,22 @@ void Iron::saveSettings()
             {
             case SettingType::GENERAL_SETTINGS:
                 this->storedData.data[i][j] = (float)this->configuration.generalSettings[j].value;
-                continue;
+                break;
             case SettingType::PID_SETTINGS:
                 this->storedData.data[i][j] = (float)this->configuration.pidSettings[j].value;
-                continue;
+                break;
             case SettingType::OPAMP_SETTINGS:
                 this->storedData.data[i][j] = (float)this->configuration.opAmpSettings[j].value;
-                continue;
+                break;
             case SettingType::CAL_SETTINGS:
                 this->storedData.data[i][j] = (float)this->configuration.calPoints[j].mV;
-                continue;
+                break;
             }
         }
     }
 
     this->storedData.saveCount++;
+    this->storedData.magic = EEPROM_MAGIC;
 
     EEPROM.put(0, this->storedData);
 
@@ -116,13 +116,12 @@ void Iron::saveSettings()
     }
 
     this->configuration.changed = false;
-
-    delay(5000);
 }
 
 void Iron::loadSettings()
 {
     StoredData tempStoredData;
+
     EEPROM.get(0, tempStoredData);
 
     if (tempStoredData.magic != EEPROM_MAGIC)
@@ -142,16 +141,16 @@ void Iron::loadSettings()
             {
             case SettingType::GENERAL_SETTINGS:
                 this->configuration.generalSettings[j].value = this->storedData.data[i][j];
-                continue;
+                break;
             case SettingType::PID_SETTINGS:
                 this->configuration.pidSettings[j].value = this->storedData.data[i][j];
-                continue;
+                break;
             case SettingType::OPAMP_SETTINGS:
                 this->configuration.opAmpSettings[j].value = this->storedData.data[i][j];
-                continue;
+                break;
             case SettingType::CAL_SETTINGS:
                 this->configuration.calPoints[j].mV = this->storedData.data[i][j];
-                continue;
+                break;
             }
         }
     }
@@ -322,7 +321,7 @@ void Iron::toggle()
 
 void Iron::sleep()
 {
-    if (this->disableStandBy)
+    if (this->disableSleep)
     {
         return;
     }
@@ -389,7 +388,7 @@ void Iron::heaterOutputUpdate()
 {
     if (this->invertedOutput)
     {
-        analogWrite(this->heaterOutputPin, PWM_RESOLUTION - this->heaterOutput);
+        analogWrite(this->heaterOutputPin, (int)(PWM_MAX - this->heaterOutput));
     }
     else
     {
