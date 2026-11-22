@@ -30,7 +30,6 @@ void Iron::init()
     this->loadSettings();
     this->tempCoefficientCalculation();
 
-    this->disableStandBy = false;
     this->vRef = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::VREF_SET).value;
     this->opAmpGain = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_GAIN_SET).value;
     this->opAmpZeroOutputV = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_ZERO_OUTPUT_V_SET).value;
@@ -57,6 +56,8 @@ void Iron::init()
     this->pid->SetOutputLimits(this->minOutput, this->maxOutput);
     this->pid->SetSampleTimeUs(PID_SAMPLES_TIME_US);
 
+    this->disableStandBy = false;
+    this->setStatus(Status::STATUS_OFF);
     this->standBy();
     this->playTone(SoundEvent::SOUND_INIT);
 }
@@ -80,6 +81,8 @@ void Iron::saveSettings()
     {
         return;
     }
+
+    this->heaterOutputOff();
 
     for (uint8_t i = 0; i < EEPROM_DATA_TYPE_COUNT; i++)
     {
@@ -232,6 +235,11 @@ void Iron::runPID()
         if (this->pid->Compute())
         {
             this->heaterOutputUpdate();
+        }
+
+        if (this->getHeaterTemp() > this->getTargetTemp() + 5)
+        {
+            this->pid->Reset();
         }
     }
     else

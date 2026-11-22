@@ -15,7 +15,7 @@ void UserInterface::init()
     this->showIntro();
     this->lcd->sendBuffer();
 
-    delay(5000);
+    delay(3000);
 }
 
 void UserInterface::run()
@@ -206,7 +206,6 @@ void UserInterface::onLongPress()
         this->selectView(View::DASHBOARD);
         this->iron->saveSettings();
         this->iron->init();
-        this->iron->standBy();
         break;
     }
 }
@@ -309,6 +308,12 @@ void UserInterface::showDashboard()
     this->lcd->drawUTF8(14, 0, ironSetTemp);
     this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 14, 0, ironOutput);
 
+    // Debug EEPROM
+    // this->lcd->setCursor(14, 18);
+    // this->lcd->print(this->iron->getStoredData().saveCount);
+    // this->lcd->setCursor(14, 28);
+    // this->lcd->print(sizeof(this->iron->getStoredData()));
+
     this->drawLoadingBar(0, 0, 6, this->lcd->getHeight(), this->iron->getTargetTempPct());
     this->drawLoadingBar(5, 0, 6, this->lcd->getHeight(), this->iron->getHeaterTempPct());
     this->drawLoadingBar(this->lcd->getWidth() - 11, 0, 11, this->lcd->getHeight(), this->iron->getHeaterOutputPct());
@@ -318,13 +323,6 @@ void UserInterface::showDashboard()
     this->lcd->setFontPosCenter();
     this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(ironTemp)) / 2, this->lcd->getHeight() / 2);
     this->lcd->print(ironTemp);
-
-    // Debug EEPROM
-    // this->lcd->setFont(u8g2_font_spleen6x12_mf);
-    // this->lcd->setCursor(14, 18);
-    // this->lcd->print(this->iron->getStoredData().saveCount);
-    // this->lcd->setCursor(14, 28);
-    // this->lcd->print(sizeof(this->iron->getStoredData()));
 
     this->drawStatus();
 }

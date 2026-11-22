@@ -14,9 +14,9 @@
 #define ENC_B_PIN PA2
 #define ENC_BTN_DEBOUNCE_MS 0
 #define ENC_BTN_CLICK_MS 0
-#define ENC_BTN_LONG_PRESS_MS 500
+#define ENC_BTN_LONG_PRESS_MS 1000
 
-#define HANDLE_SENSE_PIN PB13
+#define STANDBY_SENSE_PIN PB13
 #define STANDBY_DEBOUNCE_MS 50
 #define STANDBY_LONG_PRESS_MS 1
 
@@ -68,7 +68,7 @@ void setup()
     iron.init();
     ui.init();
 
-    handleSense.setup(HANDLE_SENSE_PIN, INPUT, true);
+    handleSense.setup(STANDBY_SENSE_PIN, INPUT, true);
     handleSense.setDebounceMs(STANDBY_DEBOUNCE_MS);
     handleSense.setPressMs(STANDBY_LONG_PRESS_MS);
     handleSense.attachLongPressStart(onStandbySense);
