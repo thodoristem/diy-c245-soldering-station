@@ -320,11 +320,11 @@ void UserInterface::showDashboard()
     this->lcd->print(ironTemp);
 
     // Debug EEPROM
-    this->lcd->setFont(u8g2_font_spleen6x12_mf);
-    this->lcd->setCursor(14, 18);
-    this->lcd->print(this->iron->getStoredData().saveCount);
-    this->lcd->setCursor(14, 28);
-    this->lcd->print(sizeof(this->iron->getStoredData()));
+    // this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    // this->lcd->setCursor(14, 18);
+    // this->lcd->print(this->iron->getStoredData().saveCount);
+    // this->lcd->setCursor(14, 28);
+    // this->lcd->print(sizeof(this->iron->getStoredData()));
 
     this->drawStatus();
 }
