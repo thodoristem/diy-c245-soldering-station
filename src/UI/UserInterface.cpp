@@ -484,7 +484,7 @@ void UserInterface::showCalPointsPage()
             {
                 this->incOptionOffset(CAL_NPOINTS - 1);
             }
-            else if (this->selectedOption < this->optionOffset + (maxOptionsVisible - 1))
+            else if (this->selectedOption < this->optionOffset + maxOptionsVisible - 1)
             {
                 this->decOptionOffset();
             }
@@ -500,13 +500,13 @@ void UserInterface::showCalPointsPage()
     this->lcd->drawFrame(this->lcd->getWidth() - 42, 14, 40, 48);
 
     label = String((int)this->iron->getHeaterTemp()) + "C";
-    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 6, 24, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 4, 24, label.c_str());
 
-    label = String(this->iron->getHeaterTempMV(), 2);
-    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 6, 36, label.c_str());
+    label = String(this->iron->getHeaterTempMV(), 2) + "mV";
+    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 4, 36, label.c_str());
 
     label = String((int)this->iron->getHeaterOutputPct()) + "%";
-    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 6, 48, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 4, 48, label.c_str());
 }
 
 void UserInterface::showResetPage()
@@ -600,7 +600,7 @@ void UserInterface::drawSelect(Iron::SettingType settingType, uint8_t maxOptions
             {
                 this->incOptionOffset(maxOptions);
             }
-            else if (this->selectedOption < this->optionOffset + (maxOptionsVisible - 1))
+            else if (this->selectedOption < this->optionOffset + maxOptionsVisible - 1)
             {
                 this->decOptionOffset();
             }
