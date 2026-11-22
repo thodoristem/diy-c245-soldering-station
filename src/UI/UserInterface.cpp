@@ -272,17 +272,17 @@ void UserInterface::showIntroMsg()
     this->lcd->clearBuffer();
 
     label = String("DIY");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 0, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 2, label.c_str());
     label = String("C245/T12");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 16, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 18, label.c_str());
     label = String("Soldering Station");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 16 * 2, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 16 * 2 + 2, label.c_str());
     label = String("By T.Temourtzidis");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 16 * 3, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 16 * 3 + 2, label.c_str());
 
     this->lcd->sendBuffer();
 
-    delay(3000);
+    delay(5000);
 }
 
 void UserInterface::showSaveMsg()
@@ -334,8 +334,8 @@ void UserInterface::showDashboard()
 
     this->lcd->setFontPosTop();
     this->lcd->setFont(u8g2_font_spleen8x16_mf);
-    this->lcd->drawUTF8(15, 0, ironSetTemp);
-    this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 15, 0, ironOutput);
+    this->lcd->drawUTF8(15, 2, ironSetTemp);
+    this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 15, 2, ironOutput);
 
     // Debug EEPROM
     // this->lcd->setCursor(20, 20);
@@ -403,7 +403,7 @@ void UserInterface::showGeneralSettingsPage()
         this->viewInit = false;
     }
 
-    this->drawTitle("GENERAL SETTINGS", 12);
+    this->drawTitle("GENERAL SETTINGS");
     this->drawSelect(Iron::SettingType::GENERAL_SETTINGS, GENERAL_SETTINGS_COUNT, this->maxOptionsVisible, 2, 22);
 }
 
@@ -420,7 +420,7 @@ void UserInterface::showPIDPage()
         this->viewInit = false;
     }
 
-    this->drawTitle("PID TUNING", 12);
+    this->drawTitle("PID TUNING");
     this->drawSelect(Iron::SettingType::PID_SETTINGS, PID_SETTINGS_COUNT, this->maxOptionsVisible, 2, 22);
 }
 
@@ -437,7 +437,7 @@ void UserInterface::showOpAmpPage()
         this->viewInit = false;
     }
 
-    this->drawTitle("OP AMP SETTINGS", 12);
+    this->drawTitle("OP AMP SETTINGS");
     this->drawSelect(Iron::SettingType::OPAMP_SETTINGS, OPAMP_SETTINGS_COUNT, this->maxOptionsVisible, 2, 22);
 }
 
@@ -454,7 +454,7 @@ void UserInterface::showCalPointsPage()
         this->viewInit = false;
     }
 
-    this->drawTitle("TIP CALIBRATION", 12);
+    this->drawTitle("TIP CALIBRATION");
 
     bool selected = false;
     String label;
@@ -467,7 +467,7 @@ void UserInterface::showCalPointsPage()
         index = i - 1;
         selected = (this->selectedLevel == OPTION_SELECT || this->selectedLevel == OPTION_EDIT) && this->selectedOption == i;
 
-        label = String((int)this->iron->getCalPoint(index).tempC) + "C: ";
+        label = String((int)this->iron->getCalPoint(index).tempC) + "C:";
 
         if (this->selectedOption == i && this->selectedLevel == OPTION_EDIT)
         {
@@ -495,14 +495,18 @@ void UserInterface::showCalPointsPage()
         yOffset += 16;
     }
 
-    // this->lcd->setFont(u8g2_font_spleen5x8_mf);
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+
+    this->lcd->drawFrame(this->lcd->getWidth() - 42, 14, 40, 48);
 
     label = String((int)this->iron->getHeaterTemp()) + "C";
-    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 2, 22, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 6, 24, label.c_str());
+
     label = String(this->iron->getHeaterTempMV(), 2);
-    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 2, 35, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 6, 36, label.c_str());
+
     label = String((int)this->iron->getHeaterOutputPct()) + "%";
-    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 2, 47, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 6, 48, label.c_str());
 }
 
 void UserInterface::showResetPage()
@@ -517,19 +521,21 @@ void UserInterface::showResetPage()
         this->selectedOption = 2;
         this->viewInit = false;
     }
-    this->drawTitle("RESET SETTINGS", 12);
+    this->drawTitle("RESET SETTINGS");
 }
 
-void UserInterface::drawTitle(String title, uint8_t height)
+void UserInterface::drawTitle(String title)
 {
+    uint8_t height = 13;
+
     this->lcd->setDrawColor(2);
     this->lcd->setFont(u8g2_font_spleen6x12_mf);
     this->lcd->setFontPosCenter();
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(title.c_str()) / 2, height / 2 + 1, title.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(title.c_str()) / 2, height / 2 + 2, title.c_str());
 
     if (this->selectedLevel == OPTION_SELECT || this->selectedLevel == OPTION_EDIT)
     {
-        this->drawOption("X", u8g2_font_spleen5x8_mf, 1, height / 2, 8, 1, this->selectedOption == 0);
+        this->drawOption("X", u8g2_font_spleen5x8_mf, this->lcd->getWidth() - 9, height / 2 + 1, 8, 1, this->selectedOption == 0);
         this->lcd->drawFrame(0, 0, this->lcd->getWidth(), this->lcd->getHeight());
     }
 
@@ -627,7 +633,6 @@ void UserInterface::drawStatus()
         break;
     }
 
-    // this->lcd->setFont(u8g2_font_spleen6x12_mf);
     this->lcd->setFont(u8g2_font_spleen8x16_mf);
     this->lcd->setFontPosBottom();
     this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(status.c_str())) / 2, this->lcd->getHeight());

@@ -88,8 +88,8 @@ void setup()
 void loop()
 {
     sleepSense.tick();
-
     encoderButton.tick();
+
     switch (encoder.getDirection())
     {
     case RotaryEncoder::Direction::CLOCKWISE:
