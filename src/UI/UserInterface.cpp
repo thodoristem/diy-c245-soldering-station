@@ -265,6 +265,7 @@ void UserInterface::incOptionOffset(uint8_t limit)
 void UserInterface::showIntroMsg()
 {
     String label;
+    const uint8_t yOffset = (this->lcd->getHeight() - 12 * 4) / 2;
 
     this->lcd->setFont(u8g2_font_spleen6x12_mf);
     this->lcd->setFontPosTop();
@@ -272,13 +273,13 @@ void UserInterface::showIntroMsg()
     this->lcd->clearBuffer();
 
     label = String("DIY");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 2, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, yOffset, label.c_str());
     label = String("C245/T12");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 18, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 12 + yOffset, label.c_str());
     label = String("Soldering Station");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 16 * 2 + 2, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 12 * 2 + yOffset, label.c_str());
     label = String("By T.Temourtzidis");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 16 * 3 + 2, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 12 * 3 + yOffset, label.c_str());
 
     this->lcd->sendBuffer();
 
@@ -333,7 +334,7 @@ void UserInterface::showDashboard()
     sprintf(ironOutput, "%3d%%", (int)this->iron->getHeaterOutputPct());
 
     this->lcd->setFontPosTop();
-    this->lcd->setFont(u8g2_font_spleen8x16_mf);
+    this->lcd->setFont(u8g2_font_spleen8x16_mu);
     this->lcd->drawUTF8(15, 2, ironSetTemp);
     this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 15, 2, ironOutput);
 
@@ -633,7 +634,7 @@ void UserInterface::drawStatus()
         break;
     }
 
-    this->lcd->setFont(u8g2_font_spleen8x16_mf);
+    this->lcd->setFont(u8g2_font_spleen8x16_mu);
     this->lcd->setFontPosBottom();
     this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(status.c_str())) / 2, this->lcd->getHeight());
     this->lcd->print(status);
