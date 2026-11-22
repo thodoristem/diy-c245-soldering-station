@@ -12,11 +12,12 @@
 #define PWM_BITS 10
 #define PWM_MAX 1023
 
-#define TEMP_MEASURE_SAMPLES_TIME_MS 1000 / 40 // 40 samples per sec in ms
+#define TEMP_MEASURE_SAMPLES_PER_SECOND 60
+#define TEMP_MEASURE_SAMPLES_TIME_MS 1000 / TEMP_MEASURE_SAMPLES_PER_SECOND
 #define TEMP_MEASURE_SAMPLES 30
 #define TEMP_MEASURE_SETTLE_TIME_US 500
 
-#define PID_SAMPLES_TIME_US TEMP_MEASURE_SAMPLES_TIME_MS * 1000UL // 40 samples pers sec for pid in μs
+#define PID_SAMPLES_TIME_US TEMP_MEASURE_SAMPLES_TIME_MS * 1000UL
 
 #define HEATER_CHECK_INTERVAL_MS 2000
 #define HEATER_CHECK_MIN_TEMP_RIZE 2.0f
@@ -125,7 +126,7 @@ private:
         Iron::Setting generalSettings[GENERAL_SETTINGS_COUNT] = {
             {"Temp Step", 1.0f, 50.0f, 10.0f, 1.0f, 0, "C"},
             {"Max Output", 10.0f, 90.0f, 75.0f, 1.0f, 0, "%"},
-            {"Initial Temp", 150.0f, 400.0f, 250.0f, 5.0f, 0, "C"},
+            {"Initial Temp", 150.0f, 400.0f, 300.0f, 5.0f, 0, "C"},
             {"Sleep Temp", 150.0f, 250.0f, 150.0f, 5.0f, 0, "C"},
             {"Beeper", 0, 1, 0, 1, 0, ""}};
 

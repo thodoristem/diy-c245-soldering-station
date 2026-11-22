@@ -117,7 +117,7 @@ void Iron::saveSettings()
 
     this->configuration.changed = false;
 
-    delay(3000);
+    delay(5000);
 }
 
 void Iron::loadSettings()
@@ -237,7 +237,7 @@ void Iron::runPID()
             this->heaterOutputUpdate();
         }
 
-        if (this->getHeaterTemp() > this->getTargetTemp() + 5)
+        if (this->getHeaterTemp() > this->getTargetTemp() + 2)
         {
             this->pid->Reset();
         }
@@ -401,7 +401,7 @@ void Iron::heaterOutputOff()
 {
     if (this->invertedOutput)
     {
-        analogWrite(this->heaterOutputPin, PWM_RESOLUTION);
+        analogWrite(this->heaterOutputPin, PWM_MAX);
     }
     else
     {
@@ -432,6 +432,11 @@ void Iron::incTargetTemp()
 
 void Iron::incTargetTemp(float step)
 {
+    if (this->status == Status::STATUS_SLEEP)
+    {
+        return;
+    }
+
     if (this->targetTemp < this->maxTemp)
     {
         this->targetTemp += step;
@@ -450,6 +455,11 @@ void Iron::decTargetTemp()
 
 void Iron::decTargetTemp(float step)
 {
+    if (this->status == Status::STATUS_SLEEP)
+    {
+        return;
+    }
+
     if (this->targetTemp > this->minTemp)
     {
         this->targetTemp -= step;
@@ -536,7 +546,8 @@ void Iron::incSetting(Iron::SettingType type, uint8_t key)
     float value = this->getSetting(type, key).value;
     float step = this->getSetting(type, key).step;
     float max = this->getSetting(type, key).max;
-    if (value < max)
+
+    if (value <= max)
     {
         value += step;
     }
@@ -552,7 +563,8 @@ void Iron::decSetting(Iron::SettingType type, uint8_t key)
     float value = this->getSetting(type, key).value;
     float step = this->getSetting(type, key).step;
     float min = this->getSetting(type, key).min;
-    if (value > min)
+
+    if (value >= min)
     {
         value -= step;
     }

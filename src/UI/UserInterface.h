@@ -4,7 +4,7 @@
 #include <Iron/Iron.h>
 #include <U8g2lib.h>
 
-#define LCD_INTERVAL_MS 100
+#define LCD_INTERVAL_MS 200
 
 class UserInterface
 {
@@ -68,7 +68,8 @@ public:
     void decOptionOffset();
     void incOptionOffset(uint8_t limit);
 
-    void showIntro();
+    void showIntroMsg();
+    void showSaveMsg();
     void showDashboard();
     void showMenu();
     void showGeneralSettingsPage();

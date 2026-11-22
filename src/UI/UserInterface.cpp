@@ -11,11 +11,7 @@ void UserInterface::init()
     this->lcd->begin();
     this->lcd->clear();
 
-    this->lcd->clearBuffer();
-    this->showIntro();
-    this->lcd->sendBuffer();
-
-    delay(3000);
+    this->showIntroMsg();
 }
 
 void UserInterface::run()
@@ -204,6 +200,7 @@ void UserInterface::onLongPress()
         break;
     default:
         this->selectView(View::DASHBOARD);
+        this->showSaveMsg();
         this->iron->saveSettings();
         this->iron->init();
         break;
@@ -238,6 +235,7 @@ void UserInterface::selectView(View view)
 {
     this->viewInit = true;
     this->selectedView = view;
+    this->lcd->clear();
 }
 
 void UserInterface::decOptionOffset()
@@ -264,21 +262,51 @@ void UserInterface::incOptionOffset(uint8_t limit)
     }
 }
 
-void UserInterface::showIntro()
+void UserInterface::showIntroMsg()
 {
     String label;
 
     this->lcd->setFont(u8g2_font_spleen6x12_mf);
-    this->lcd->setFontPosBottom();
+    this->lcd->setFontPosTop();
+
+    this->lcd->clearBuffer();
 
     label = String("DIY");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 14, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 0, label.c_str());
     label = String("C245/T12");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 14 * 2, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 16, label.c_str());
     label = String("Soldering Station");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 14 * 3, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 16 * 2, label.c_str());
     label = String("By T.Temourtzidis");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 14 * 4, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 16 * 3, label.c_str());
+
+    this->lcd->sendBuffer();
+
+    delay(3000);
+}
+
+void UserInterface::showSaveMsg()
+{
+    String label;
+
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    this->lcd->setFontPosCenter();
+
+    this->lcd->clearBuffer();
+
+    if (this->iron->getConfig().changed)
+    {
+        label = "Saving Settings...";
+    }
+    else
+    {
+        label = "Nothing Changed!";
+        delay(2000);
+    }
+
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, this->lcd->getHeight() / 2, label.c_str());
+
+    this->lcd->sendBuffer();
 }
 
 void UserInterface::showDashboard()
@@ -305,20 +333,22 @@ void UserInterface::showDashboard()
 
     this->lcd->setFontPosTop();
     this->lcd->setFont(u8g2_font_spleen8x16_mf);
-    this->lcd->drawUTF8(14, 0, ironSetTemp);
-    this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 14, 0, ironOutput);
+    this->lcd->drawUTF8(15, 0, ironSetTemp);
+    this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 15, 0, ironOutput);
 
     // Debug EEPROM
-    // this->lcd->setCursor(14, 18);
-    // this->lcd->print(this->iron->getStoredData().saveCount);
+    this->lcd->setCursor(20, 20);
+    this->lcd->print(this->iron->getStoredData().saveCount);
     // this->lcd->setCursor(14, 28);
     // this->lcd->print(sizeof(this->iron->getStoredData()));
 
-    this->drawLoadingBar(0, 0, 6, this->lcd->getHeight(), this->iron->getTargetTempPct());
-    this->drawLoadingBar(5, 0, 6, this->lcd->getHeight(), this->iron->getHeaterTempPct());
-    this->drawLoadingBar(this->lcd->getWidth() - 11, 0, 11, this->lcd->getHeight(), this->iron->getHeaterOutputPct());
+    this->drawLoadingBar(0, 0, 7, this->lcd->getHeight(), this->iron->getTargetTempPct());
+    this->drawLoadingBar(6, 0, 7, this->lcd->getHeight(), this->iron->getHeaterTempPct());
+    this->drawLoadingBar(this->lcd->getWidth() - 13, 0, 13, this->lcd->getHeight(), this->iron->getHeaterOutputPct());
 
-    this->lcd->drawUTF8((this->lcd->getWidth() / 2 + 24), this->lcd->getHeight() / 2 - 14, "\u00B0C");
+    this->lcd->drawRFrame(16, 15, this->lcd->getWidth() - 32, this->lcd->getHeight() - 30, 8);
+
+    this->lcd->drawUTF8((this->lcd->getWidth() / 2 + 24), this->lcd->getHeight() / 2 - 10, "\u00B0C");
     this->lcd->setFont(u8g2_font_spleen16x32_mn);
     this->lcd->setFontPosCenter();
     this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(ironTemp)) / 2, this->lcd->getHeight() / 2);
