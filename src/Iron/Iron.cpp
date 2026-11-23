@@ -2,6 +2,7 @@
 
 #define FLASH_DEBUG 0
 #define USING_FLASH_SECTOR_NUMBER 62
+
 #include <FlashStorage_STM32F1.h>
 
 Iron::Iron(
@@ -24,6 +25,145 @@ Iron::Iron(
     pinMode(this->beeperPin, OUTPUT);
 }
 
+float Iron::readVoltage(uint8_t pin, int samples, int settleTimeUs, float vRef)
+{
+    delayMicroseconds(settleTimeUs);
+
+    int total = 0;
+
+    for (int i = 0; i < samples; i++)
+    {
+        delayMicroseconds(2);
+        total += analogRead(pin);
+    }
+
+    return (float)(total / samples) * vRef / ADC_MAX;
+}
+
+void Iron::readTemp()
+{
+    if (!this->tempMeasureActive)
+    {
+        this->tempMeasureActive = true;
+        this->tempMeasureStart = millis();
+        return;
+    }
+
+    if (millis() - this->tempMeasureStart >= TEMP_MEASURE_SAMPLES_TIME_MS)
+    {
+        // Stop heater
+        this->heaterOutputOff();
+
+        // Take temp measurement
+        float volts = Iron::readVoltage(
+            this->heaterTempPin,
+            TEMP_MEASURE_SAMPLES,
+            TEMP_MEASURE_SETTLE_TIME_US,
+            this->vRef);
+
+        // Resume heater
+        this->heaterOutputUpdate();
+
+        // Convert amplifier output to thermocouple millivolts.
+        this->heaterTempMV = (volts - this->opAmpZeroOutputV) * 1000.0f / this->opAmpGain;
+
+        // 4th Order Polynomial c0 * mV^3 + c1 * mV^2 + c2 * mV + c3
+        this->heaterTemp = this->coeffs[this->tipType][0] * pow(this->heaterTempMV, 3);
+        this->heaterTemp += this->coeffs[this->tipType][1] * pow(this->heaterTempMV, 2);
+        this->heaterTemp += this->coeffs[this->tipType][2] * this->heaterTempMV;
+        this->heaterTemp += this->coeffs[this->tipType][3];
+
+        this->tempMeasureActive = false;
+    }
+}
+
+void Iron::runPID()
+{
+    if (this->status != STATUS_FAULT && this->status != STATUS_OFF)
+    {
+        if (this->pid->Compute())
+        {
+            this->heaterOutputUpdate();
+        }
+
+        if (this->getHeaterTemp() > this->getTargetTemp() + 1)
+        {
+            this->pid->Reset();
+        }
+    }
+    else
+    {
+        this->heaterOutput = 0;
+        this->heaterOutputOff();
+    }
+}
+
+void Iron::heaterCheck()
+{
+    if (this->getHeaterTemp() > this->maxTemp + 100)
+    {
+        this->status = STATUS_FAULT;
+        this->playTone(SoundEvent::SOUND_ERROR);
+        return;
+    }
+
+    if (this->getHeaterOutput() < this->maxOutput * 0.25f)
+    {
+        this->heaterCheckActive = false;
+        return;
+    }
+
+    if (!this->heaterCheckActive)
+    {
+        this->heaterCheckActive = true;
+        this->heaterCheckStart = millis();
+        this->heaterCheckTemp = this->getHeaterTemp();
+        return;
+    }
+
+    if (millis() - this->heaterCheckStart >= HEATER_CHECK_INTERVAL_MS)
+    {
+        float tempDiff = this->getHeaterTemp() - this->heaterCheckTemp;
+
+        if (tempDiff < HEATER_CHECK_MIN_TEMP_RIZE)
+        {
+            this->setStatus(Status::STATUS_FAULT);
+            this->playTone(SoundEvent::SOUND_ERROR);
+        }
+
+        // Start a new observation window.
+        this->heaterCheckStart = millis();
+        this->heaterCheckTemp = this->getHeaterTemp();
+    }
+}
+
+bool Iron::tcCoefficientCalculation()
+{
+    double mv[CAL_NPOINTS];
+    double t[CAL_NPOINTS];
+
+    for (int i = 0; i < CAL_NPOINTS; i++)
+    {
+        mv[i] = this->configuration.calPoints[this->tipType][i].mV;
+        t[i] = this->configuration.calPoints[this->tipType][i].tempC;
+    }
+
+    if (fitCurve(CAL_ORDER, CAL_NPOINTS, mv, t, CAL_NCOEFFS, this->coeffs[this->tipType]) != 0)
+    {
+        return false;
+    }
+
+    for (int i = 0; i < CAL_NCOEFFS; i++)
+    {
+        if (!isfinite(this->coeffs[this->tipType][i]))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void Iron::init()
 {
     this->init(true);
@@ -38,7 +178,7 @@ void Iron::init(bool loadSavedSettings)
         this->loadSettings();
     }
 
-    this->tempCoefficientCalculation();
+    this->tcCoefficientCalculation();
 
     this->tipType = (TipType)this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TIP_TYPE_SET).value;
     this->vRef = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::VREF_SET).value;
@@ -80,6 +220,81 @@ void Iron::initCal()
     this->disableSleep = true;
 }
 
+void Iron::run()
+{
+    this->readTemp();
+    this->heaterCheck();
+    this->runPID();
+}
+
+void Iron::heaterOutputUpdate()
+{
+    if (this->invertedOutput)
+    {
+        analogWrite(this->heaterOutputPin, (int)(PWM_MAX - this->heaterOutput));
+    }
+    else
+    {
+        analogWrite(this->heaterOutputPin, (int)this->heaterOutput);
+    }
+}
+
+void Iron::heaterOutputOff()
+{
+    if (this->invertedOutput)
+    {
+        analogWrite(this->heaterOutputPin, PWM_MAX);
+    }
+    else
+    {
+        analogWrite(this->heaterOutputPin, 0);
+    }
+}
+
+void Iron::toggle()
+{
+    switch (this->getStatus())
+    {
+    case STATUS_SLEEP:
+        return;
+    case STATUS_FAULT:
+    case STATUS_HEATING:
+        this->setStatus(STATUS_OFF);
+        this->playTone(SoundEvent::SOUND_HEATER_OFF);
+        break;
+    default:
+        this->setStatus(STATUS_HEATING);
+        this->playTone(SoundEvent::SOUND_HEATER_ON);
+        break;
+    }
+}
+
+void Iron::sleep()
+{
+    if (this->disableSleep || this->status == Status::STATUS_FAULT)
+    {
+        return;
+    }
+
+    if (this->getStatus() != Iron::Status::STATUS_SLEEP)
+    {
+        this->wakeTemp = this->getTargetTemp();
+        this->setTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::SLEEP_TEMP_SET).value);
+        this->setStatus(Iron::Status::STATUS_SLEEP);
+        this->playTone(SoundEvent::SOUND_HEATER_OFF);
+    }
+}
+
+void Iron::wake()
+{
+    if (this->getStatus() == Iron::Status::STATUS_SLEEP)
+    {
+        this->setTargetTemp(this->wakeTemp);
+        this->setStatus(Iron::Status::STATUS_HEATING);
+        this->playTone(SoundEvent::SOUND_HEATER_ON);
+    }
+}
+
 void Iron::setTipType(TipType type)
 {
     this->tipType = type;
@@ -95,6 +310,172 @@ void Iron::setOutputRange(float minPCT, float maxPCT)
     this->minOutput = PWM_MAX / 100.0f * minPCT;
     this->maxOutput = PWM_MAX / 100.0f * maxPCT;
 }
+
+void Iron::playTone(SoundEvent event)
+{
+    if (this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::BEEPER_SET).value == 0)
+    {
+        return;
+    }
+    switch (event)
+    {
+    case SOUND_INIT:
+        tone(this->beeperPin, 800, 100);
+        delay(150);
+        tone(this->beeperPin, 1200, 100);
+        delay(150);
+        tone(this->beeperPin, 1600, 150);
+        break;
+    case SOUND_TEMP_CHANGE:
+        tone(this->beeperPin, 2200, 70);
+        break;
+    case SOUND_TEMP_REACHED:
+        tone(this->beeperPin, 1200, 100);
+        delay(150);
+        tone(this->beeperPin, 1800, 180);
+        break;
+    case SOUND_ERROR:
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            tone(this->beeperPin, 500, 180);
+            delay(260);
+        }
+        break;
+    case SOUND_HEATER_ON:
+        tone(this->beeperPin, 1600, 70);
+        break;
+    case SOUND_HEATER_OFF:
+        tone(this->beeperPin, 1000, 100);
+        break;
+    case SOUND_NONE:
+    default:
+        noTone(this->beeperPin);
+        break;
+    }
+}
+
+Iron::Status Iron::getStatus()
+{
+    return this->status;
+}
+
+void Iron::setStatus(Status status)
+{
+    this->status = status;
+}
+
+// ##############################################################################################
+// ## TARGET TEMPRATURE #########################################################################
+// ##############################################################################################
+
+void Iron::setTargetTemp(float temp)
+{
+    if (temp <= this->minTemp)
+    {
+        this->targetTemp = this->minTemp;
+    }
+    else if (temp >= this->maxTemp)
+    {
+        this->targetTemp = this->maxTemp;
+    }
+    else
+    {
+        this->targetTemp = temp;
+    }
+}
+
+float Iron::getTargetTemp()
+{
+    return this->targetTemp;
+}
+
+float Iron::getTargetTempPct()
+{
+    return this->targetTemp / this->maxTemp * 100.0f;
+}
+
+void Iron::incTargetTemp()
+{
+    this->incTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TEMP_SELECT_STEP_SET).value);
+}
+
+void Iron::incTargetTemp(float step)
+{
+    if (this->status == Status::STATUS_SLEEP)
+    {
+        return;
+    }
+
+    if (this->targetTemp < this->maxTemp)
+    {
+        this->targetTemp += step;
+    }
+    else
+    {
+        this->targetTemp = this->maxTemp;
+    }
+    this->playTone(SoundEvent::SOUND_TEMP_CHANGE);
+}
+
+void Iron::decTargetTemp()
+{
+    this->decTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TEMP_SELECT_STEP_SET).value);
+}
+
+void Iron::decTargetTemp(float step)
+{
+    if (this->status == Status::STATUS_SLEEP)
+    {
+        return;
+    }
+
+    if (this->targetTemp > this->minTemp)
+    {
+        this->targetTemp -= step;
+    }
+    else
+    {
+        this->targetTemp = this->minTemp;
+    }
+    this->playTone(SoundEvent::SOUND_TEMP_CHANGE);
+}
+
+// ##############################################################################################
+// ## TIP TEMPRATURE ################################################################################
+// ##############################################################################################
+
+float Iron::getHeaterTemp()
+{
+    return this->heaterTemp;
+}
+
+float Iron::getHeaterTempPct()
+{
+    return this->heaterTemp / this->maxTemp * 100.0f;
+}
+
+float Iron::getHeaterTempMV()
+{
+    return this->heaterTempMV;
+}
+
+// ##############################################################################################
+// ## HEATER OUTPUT #############################################################################
+// ##############################################################################################
+
+float Iron::getHeaterOutput()
+{
+    return this->heaterOutput;
+}
+
+float Iron::getHeaterOutputPct()
+{
+    return this->heaterOutput / this->maxOutput * 100.0f;
+}
+
+// ##############################################################################################
+// ## SETTINGS ##################################################################################
+// ##############################################################################################
 
 void Iron::saveSettings()
 {
@@ -180,355 +561,6 @@ void Iron::loadSettings()
             }
         }
     }
-}
-
-bool Iron::tempCoefficientCalculation()
-{
-    double mv[CAL_NPOINTS];
-    double t[CAL_NPOINTS];
-
-    for (int i = 0; i < CAL_NPOINTS; i++)
-    {
-        mv[i] = this->configuration.calPoints[this->tipType][i].mV;
-        t[i] = this->configuration.calPoints[this->tipType][i].tempC;
-    }
-
-    if (fitCurve(CAL_ORDER, CAL_NPOINTS, mv, t, CAL_NCOEFFS, this->coeffs[this->tipType]) != 0)
-    {
-        return false;
-    }
-
-    for (int i = 0; i < CAL_NCOEFFS; i++)
-    {
-        if (!isfinite(this->coeffs[this->tipType][i]))
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-void Iron::readTemp()
-{
-    if (!this->tempMeasureActive)
-    {
-        this->tempMeasureActive = true;
-        this->tempMeasureStart = millis();
-        return;
-    }
-
-    if (millis() - this->tempMeasureStart >= TEMP_MEASURE_SAMPLES_TIME_MS)
-    {
-        // Stop heater
-        this->heaterOutputOff();
-
-        // Take temp measurement
-        float volts = Iron::readVoltage(
-            this->heaterTempPin,
-            TEMP_MEASURE_SAMPLES,
-            TEMP_MEASURE_SETTLE_TIME_US,
-            this->vRef);
-
-        // Resume heater
-        this->heaterOutputUpdate();
-
-        // Convert amplifier output to thermocouple millivolts.
-        this->heaterTempMV = (volts - this->opAmpZeroOutputV) * 1000.0f / this->opAmpGain;
-
-        // 4th Order Polynomial c0 * mV^3 + c1 * mV^2 + c2 * mV + c3
-        this->heaterTemp = this->coeffs[this->tipType][0] * pow(this->heaterTempMV, 3);
-        this->heaterTemp += this->coeffs[this->tipType][1] * pow(this->heaterTempMV, 2);
-        this->heaterTemp += this->coeffs[this->tipType][2] * this->heaterTempMV;
-        this->heaterTemp += this->coeffs[this->tipType][3];
-
-        this->tempMeasureActive = false;
-    }
-}
-
-void Iron::run()
-{
-    this->readTemp();
-    this->heaterCheck();
-    this->runPID();
-}
-
-void Iron::runPID()
-{
-    if (this->status != STATUS_FAULT && this->status != STATUS_OFF)
-    {
-        if (this->pid->Compute())
-        {
-            this->heaterOutputUpdate();
-        }
-
-        if (this->getHeaterTemp() > this->getTargetTemp() + 2)
-        {
-            this->pid->Reset();
-        }
-    }
-    else
-    {
-        this->heaterOutput = 0;
-        this->heaterOutputOff();
-    }
-}
-
-void Iron::playTone(SoundEvent event)
-{
-    if (this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::BEEPER_SET).value == 0)
-    {
-        return;
-    }
-    switch (event)
-    {
-    case SOUND_INIT:
-        tone(this->beeperPin, 800, 100);
-        delay(150);
-        tone(this->beeperPin, 1200, 100);
-        delay(150);
-        tone(this->beeperPin, 1600, 150);
-        break;
-    case SOUND_TEMP_CHANGE:
-        tone(this->beeperPin, 2200, 70);
-        break;
-    case SOUND_TEMP_REACHED:
-        tone(this->beeperPin, 1200, 100);
-        delay(150);
-        tone(this->beeperPin, 1800, 180);
-        break;
-    case SOUND_ERROR:
-        for (uint8_t i = 0; i < 3; i++)
-        {
-            tone(this->beeperPin, 500, 180);
-            delay(260);
-        }
-        break;
-    case SOUND_HEATER_ON:
-        tone(this->beeperPin, 1600, 70);
-        break;
-    case SOUND_HEATER_OFF:
-        tone(this->beeperPin, 1000, 100);
-        break;
-    case SOUND_NONE:
-    default:
-        noTone(this->beeperPin);
-        break;
-    }
-}
-
-Iron::Status Iron::getStatus()
-{
-    return this->status;
-}
-
-void Iron::setStatus(Status status)
-{
-    this->status = status;
-}
-
-void Iron::toggle()
-{
-    switch (this->getStatus())
-    {
-    case STATUS_SLEEP:
-        return;
-    case STATUS_FAULT:
-    case STATUS_HEATING:
-        this->setStatus(STATUS_OFF);
-        this->playTone(SoundEvent::SOUND_HEATER_OFF);
-        break;
-    default:
-        this->setStatus(STATUS_HEATING);
-        this->playTone(SoundEvent::SOUND_HEATER_ON);
-        break;
-    }
-}
-
-void Iron::sleep()
-{
-    if (this->disableSleep)
-    {
-        return;
-    }
-
-    if (this->getStatus() != Iron::Status::STATUS_SLEEP)
-    {
-        this->wakeTemp = this->getTargetTemp();
-        this->setTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::SLEEP_TEMP_SET).value);
-        this->setStatus(Iron::Status::STATUS_SLEEP);
-        this->playTone(SoundEvent::SOUND_HEATER_OFF);
-    }
-}
-
-void Iron::wake()
-{
-    if (this->getStatus() == Iron::Status::STATUS_SLEEP)
-    {
-        this->setTargetTemp(this->wakeTemp);
-        this->setStatus(Iron::Status::STATUS_HEATING);
-        this->playTone(SoundEvent::SOUND_HEATER_ON);
-    }
-}
-
-void Iron::heaterCheck()
-{
-    if (this->getHeaterTemp() > this->maxTemp + 100)
-    {
-        this->status = STATUS_FAULT;
-        this->playTone(SoundEvent::SOUND_ERROR);
-        return;
-    }
-
-    if (this->getHeaterOutput() < this->maxOutput * 0.25f)
-    {
-        this->heaterCheckActive = false;
-        return;
-    }
-
-    if (!this->heaterCheckActive)
-    {
-        this->heaterCheckActive = true;
-        this->heaterCheckStart = millis();
-        this->heaterCheckTemp = this->getHeaterTemp();
-        return;
-    }
-
-    if (millis() - this->heaterCheckStart >= HEATER_CHECK_INTERVAL_MS)
-    {
-        float tempDiff = this->getHeaterTemp() - this->heaterCheckTemp;
-
-        if (tempDiff < HEATER_CHECK_MIN_TEMP_RIZE)
-        {
-            this->status = STATUS_FAULT;
-            this->playTone(SoundEvent::SOUND_ERROR);
-        }
-
-        // Start a new observation window.
-        this->heaterCheckStart = millis();
-        this->heaterCheckTemp = this->getHeaterTemp();
-    }
-}
-
-void Iron::heaterOutputUpdate()
-{
-    if (this->invertedOutput)
-    {
-        analogWrite(this->heaterOutputPin, (int)(PWM_MAX - this->heaterOutput));
-    }
-    else
-    {
-        analogWrite(this->heaterOutputPin, (int)this->heaterOutput);
-    }
-}
-
-void Iron::heaterOutputOff()
-{
-    if (this->invertedOutput)
-    {
-        analogWrite(this->heaterOutputPin, PWM_MAX);
-    }
-    else
-    {
-        analogWrite(this->heaterOutputPin, 0);
-    }
-}
-
-void Iron::setTargetTemp(float temp)
-{
-    if (temp <= this->minTemp)
-    {
-        this->targetTemp = this->minTemp;
-    }
-    else if (temp >= this->maxTemp)
-    {
-        this->targetTemp = this->maxTemp;
-    }
-    else
-    {
-        this->targetTemp = temp;
-    }
-}
-
-void Iron::incTargetTemp()
-{
-    this->incTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TEMP_SELECT_STEP_SET).value);
-}
-
-void Iron::incTargetTemp(float step)
-{
-    if (this->status == Status::STATUS_SLEEP)
-    {
-        return;
-    }
-
-    if (this->targetTemp < this->maxTemp)
-    {
-        this->targetTemp += step;
-    }
-    else
-    {
-        this->targetTemp = this->maxTemp;
-    }
-    this->playTone(SoundEvent::SOUND_TEMP_CHANGE);
-}
-
-void Iron::decTargetTemp()
-{
-    this->decTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TEMP_SELECT_STEP_SET).value);
-}
-
-void Iron::decTargetTemp(float step)
-{
-    if (this->status == Status::STATUS_SLEEP)
-    {
-        return;
-    }
-
-    if (this->targetTemp > this->minTemp)
-    {
-        this->targetTemp -= step;
-    }
-    else
-    {
-        this->targetTemp = this->minTemp;
-    }
-    this->playTone(SoundEvent::SOUND_TEMP_CHANGE);
-}
-
-float Iron::getTargetTemp()
-{
-    return this->targetTemp;
-}
-
-float Iron::getTargetTempPct()
-{
-    return this->targetTemp / this->maxTemp * 100.0f;
-}
-
-float Iron::getHeaterTemp()
-{
-    return this->heaterTemp;
-}
-
-float Iron::getHeaterTempPct()
-{
-    return this->heaterTemp / this->maxTemp * 100.0f;
-}
-
-float Iron::getHeaterTempMV()
-{
-    return this->heaterTempMV;
-}
-
-float Iron::getHeaterOutput()
-{
-    return this->heaterOutput;
-}
-
-float Iron::getHeaterOutputPct()
-{
-    return this->heaterOutput / this->maxOutput * 100.0f;
 }
 
 Iron::Setting Iron::getSetting(Iron::SettingType type, uint8_t key)
@@ -620,21 +652,6 @@ Iron::Configuration Iron::getConfig()
 Iron::StoredData Iron::getStoredData()
 {
     return this->storedData;
-}
-
-float Iron::readVoltage(uint8_t pin, int samples, int settleTimeUs, float vRef)
-{
-    delayMicroseconds(settleTimeUs);
-
-    int total = 0;
-
-    for (int i = 0; i < samples; i++)
-    {
-        delayMicroseconds(2);
-        total += analogRead(pin);
-    }
-
-    return (float)(total / samples) * vRef / ADC_MAX;
 }
 
 uint8_t Iron::getSettingsCountForType(SettingType type)

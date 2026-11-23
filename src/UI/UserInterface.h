@@ -37,7 +37,9 @@ private:
 
     SelectLevel selectedLevel = HOME;
     View selectedView = DASHBOARD;
+
     bool viewInit = false;
+
     uint8_t selectedOption = 0;
     uint8_t optionOffset = 0;
     uint8_t maxOptionsVisible = 0;

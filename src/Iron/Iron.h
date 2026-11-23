@@ -213,7 +213,6 @@ private:
     void runPID();
     void readTemp();
     void heaterCheck();
-    void heaterOutputUpdate();
 
 public:
     Iron(
@@ -222,48 +221,58 @@ public:
         uint8_t beeperPin,
         bool outputReversed);
 
+    static float readVoltage(uint8_t pin, int samples, int settleTimeUs, float vRef);
+
+    bool tcCoefficientCalculation();
+
     void init();
     void init(bool loadSavedSettings);
     void initCal();
-    void saveSettings();
-    void loadSettings();
-    bool tempCoefficientCalculation();
     void run();
-    Status getStatus();
-    void setStatus(Status status);
-    void playTone(SoundEvent event);
+
+    void heaterOutputUpdate();
+    void heaterOutputOff();
+
     void toggle();
     void sleep();
     void wake();
+
     void setTipType(TipType type);
     TipType getTipType();
+
     void setOutputRange(float min, float max);
+
+    Status getStatus();
+    void setStatus(Status status);
+
+    void playTone(SoundEvent event);
+
+    float getTargetTemp();
+    float getTargetTempPct();
+
+    float getHeaterOutput();
+    float getHeaterOutputPct();
+
+    float getHeaterTemp();
+    float getHeaterTempMV();
+    float getHeaterTempPct();
+
     void setTargetTemp(float temp);
     void incTargetTemp();
     void incTargetTemp(float step);
     void decTargetTemp();
     void decTargetTemp(float step);
-    void heaterOutputOff();
-    float getHeaterOutput();
-    float getHeaterOutputPct();
-    float getTargetTemp();
-    float getTargetTempPct();
-    float getHeaterTempMV();
-    float getHeaterTemp();
-    float getHeaterTempPct();
 
+    void saveSettings();
+    void loadSettings();
     Setting getSetting(Iron::SettingType type, uint8_t key);
     void setSetting(Iron::SettingType type, uint8_t key, float value);
     void incSetting(Iron::SettingType type, uint8_t key);
     void decSetting(Iron::SettingType type, uint8_t key);
-
     CalPoint getCalPoint(uint8_t index);
     void setCalPointMv(uint8_t index, float mv);
-
     Configuration getConfig();
     StoredData getStoredData();
-
-    static float readVoltage(uint8_t pin, int samples, int settleTimeUs, float vRef);
     static uint8_t getSettingsCountForType(SettingType type);
     static String getNameForTipType(TipType type);
 };
