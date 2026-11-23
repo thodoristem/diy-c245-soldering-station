@@ -26,11 +26,21 @@ Iron::Iron(
 
 void Iron::init()
 {
+    this->init(true);
+}
+
+void Iron::init(bool loadSavedSettings)
+{
     delay(500);
 
-    this->loadSettings();
+    if (loadSavedSettings)
+    {
+        this->loadSettings();
+    }
+
     this->tempCoefficientCalculation();
 
+    this->tipType = (TipType)this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TIP_TYPE_SET).value;
     this->vRef = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::VREF_SET).value;
     this->opAmpGain = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_GAIN_SET).value;
     this->opAmpZeroOutputV = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_ZERO_OUTPUT_V_SET).value;
@@ -57,7 +67,7 @@ void Iron::init()
     this->pid->SetOutputLimits(this->minOutput, this->maxOutput);
     this->pid->SetSampleTimeUs(PID_SAMPLES_TIME_US);
 
-    this->disableSleep = false;
+    this->disableSleep = !loadSavedSettings;
     this->setStatus(Status::STATUS_OFF);
     this->sleep();
     this->playTone(SoundEvent::SOUND_INIT);
@@ -68,6 +78,16 @@ void Iron::initCal()
     this->minTemp -= 100;
     this->maxTemp += 100;
     this->disableSleep = true;
+}
+
+void Iron::setTipType(TipType type)
+{
+    this->tipType = type;
+}
+
+Iron::TipType Iron::getTipType()
+{
+    return this->tipType;
 }
 
 void Iron::setOutputRange(float minPCT, float maxPCT)
@@ -85,7 +105,7 @@ void Iron::saveSettings()
 
     for (uint8_t i = 0; i < EEPROM_DATA_TYPE_COUNT; i++)
     {
-        for (uint8_t j = 0; j < Iron::getSettingsCountForType(i); j++)
+        for (uint8_t j = 0; j < Iron::getSettingsCountForType((SettingType)i); j++)
         {
             switch (i)
             {
@@ -98,8 +118,11 @@ void Iron::saveSettings()
             case SettingType::OPAMP_SETTINGS:
                 this->storedData.data[i][j] = (float)this->configuration.opAmpSettings[j].value;
                 break;
-            case SettingType::CAL_SETTINGS:
-                this->storedData.data[i][j] = (float)this->configuration.calPoints[j].mV;
+            case SettingType::C245_CAL_SETTINGS:
+                this->storedData.data[i][j] = (float)this->configuration.calPoints[TipType::C245][j].mV;
+                break;
+            case SettingType::T12_CAL_SETTINGS:
+                this->storedData.data[i][j] = (float)this->configuration.calPoints[TipType::T12][j].mV;
                 break;
             }
         }
@@ -135,7 +158,7 @@ void Iron::loadSettings()
 
     for (uint8_t i = 0; i < EEPROM_DATA_TYPE_COUNT; i++)
     {
-        for (uint8_t j = 0; j < Iron::getSettingsCountForType(i); j++)
+        for (uint8_t j = 0; j < Iron::getSettingsCountForType((SettingType)i); j++)
         {
             switch (i)
             {
@@ -148,8 +171,11 @@ void Iron::loadSettings()
             case SettingType::OPAMP_SETTINGS:
                 this->configuration.opAmpSettings[j].value = this->storedData.data[i][j];
                 break;
-            case SettingType::CAL_SETTINGS:
-                this->configuration.calPoints[j].mV = this->storedData.data[i][j];
+            case SettingType::C245_CAL_SETTINGS:
+                this->configuration.calPoints[TipType::C245][j].mV = this->storedData.data[i][j];
+                break;
+            case SettingType::T12_CAL_SETTINGS:
+                this->configuration.calPoints[TipType::T12][j].mV = this->storedData.data[i][j];
                 break;
             }
         }
@@ -163,18 +189,18 @@ bool Iron::tempCoefficientCalculation()
 
     for (int i = 0; i < CAL_NPOINTS; i++)
     {
-        mv[i] = this->configuration.calPoints[i].mV;
-        t[i] = this->configuration.calPoints[i].tempC;
+        mv[i] = this->configuration.calPoints[this->tipType][i].mV;
+        t[i] = this->configuration.calPoints[this->tipType][i].tempC;
     }
 
-    if (fitCurve(CAL_ORDER, CAL_NPOINTS, mv, t, CAL_NCOEFFS, this->coeffs) != 0)
+    if (fitCurve(CAL_ORDER, CAL_NPOINTS, mv, t, CAL_NCOEFFS, this->coeffs[this->tipType]) != 0)
     {
         return false;
     }
 
     for (int i = 0; i < CAL_NCOEFFS; i++)
     {
-        if (!isfinite(this->coeffs[i]))
+        if (!isfinite(this->coeffs[this->tipType][i]))
         {
             return false;
         }
@@ -211,10 +237,10 @@ void Iron::readTemp()
         this->heaterTempMV = (volts - this->opAmpZeroOutputV) * 1000.0f / this->opAmpGain;
 
         // 4th Order Polynomial c0 * mV^3 + c1 * mV^2 + c2 * mV + c3
-        this->heaterTemp = this->coeffs[0] * pow(this->heaterTempMV, 3);
-        this->heaterTemp += this->coeffs[1] * pow(this->heaterTempMV, 2);
-        this->heaterTemp += this->coeffs[2] * this->heaterTempMV;
-        this->heaterTemp += this->coeffs[3];
+        this->heaterTemp = this->coeffs[this->tipType][0] * pow(this->heaterTempMV, 3);
+        this->heaterTemp += this->coeffs[this->tipType][1] * pow(this->heaterTempMV, 2);
+        this->heaterTemp += this->coeffs[this->tipType][2] * this->heaterTempMV;
+        this->heaterTemp += this->coeffs[this->tipType][3];
 
         this->tempMeasureActive = false;
     }
@@ -546,7 +572,7 @@ void Iron::incSetting(Iron::SettingType type, uint8_t key)
     float step = this->getSetting(type, key).step;
     float max = this->getSetting(type, key).max;
 
-    if (value <= max)
+    if (value < max)
     {
         value += step;
     }
@@ -563,7 +589,7 @@ void Iron::decSetting(Iron::SettingType type, uint8_t key)
     float step = this->getSetting(type, key).step;
     float min = this->getSetting(type, key).min;
 
-    if (value >= min)
+    if (value > min)
     {
         value -= step;
     }
@@ -576,14 +602,14 @@ void Iron::decSetting(Iron::SettingType type, uint8_t key)
 
 Iron::CalPoint Iron::getCalPoint(uint8_t index)
 {
-    return this->configuration.calPoints[index];
+    return this->configuration.calPoints[this->tipType][index];
 }
 
 void Iron::setCalPointMv(uint8_t index, float mV)
 {
     this->configuration.changed = true;
 
-    this->configuration.calPoints[index].mV = mV;
+    this->configuration.calPoints[this->tipType][index].mV = mV;
 }
 
 Iron::Configuration Iron::getConfig()
@@ -611,7 +637,7 @@ float Iron::readVoltage(uint8_t pin, int samples, int settleTimeUs, float vRef)
     return (float)(total / samples) * vRef / ADC_MAX;
 }
 
-uint8_t Iron::getSettingsCountForType(uint8_t type)
+uint8_t Iron::getSettingsCountForType(SettingType type)
 {
     switch (type)
     {
@@ -621,9 +647,23 @@ uint8_t Iron::getSettingsCountForType(uint8_t type)
         return PID_SETTINGS_COUNT;
     case SettingType::OPAMP_SETTINGS:
         return OPAMP_SETTINGS_COUNT;
-    case SettingType::CAL_SETTINGS:
+    case SettingType::C245_CAL_SETTINGS:
+    case SettingType::T12_CAL_SETTINGS:
         return CAL_NPOINTS;
     default:
         return 0;
+    }
+}
+
+String Iron::getNameForTipType(TipType type)
+{
+    switch (type)
+    {
+    case Iron::TipType::C245:
+        return String("C245");
+    case Iron::TipType::T12:
+        return String("T12");
+    default:
+        return String("NAN");
     }
 }

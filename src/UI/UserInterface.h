@@ -14,9 +14,9 @@ public:
         DASHBOARD,
         MENU,
         PAGE_GENERAL_SETTINGS,
-        PAGE_CAL_POINTS,
         PAGE_PID,
         PAGE_OPAMP,
+        PAGE_CAL_POINTS,
         PAGE_RESET
     };
 
@@ -51,7 +51,6 @@ private:
     void drawOption(String label, const uint8_t *font, uint8_t x, uint8_t y, uint8_t h, uint8_t p, bool selected);
     void drawSelect(Iron::SettingType settingType, uint8_t maxOptions, uint8_t maxOptionsVisible, uint8_t x, uint8_t y);
     void drawLoadingBar(uint8_t x, uint8_t y, uint8_t width, uint8_t height, uint8_t percentage);
-    void drawStatus();
 
 public:
     UserInterface(Iron *iron, U8G2 *lcd);

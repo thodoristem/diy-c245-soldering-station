@@ -26,6 +26,7 @@ Iron iron(
     BEEPER_PIN,
     false);
 
+// Creality 12864 OEM LCD Screen + Encoder + Beeper
 U8G2_ST7920_128X64_F_SW_SPI lcd(
     U8G2_R0,
     PA5, // Clock / SCLK

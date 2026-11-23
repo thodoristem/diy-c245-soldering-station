@@ -22,11 +22,11 @@
 #define HEATER_CHECK_INTERVAL_MS 2000
 #define HEATER_CHECK_MIN_TEMP_RIZE 2.0f
 
-#define EEPROM_MAGIC 0xC2450001UL
-#define EEPROM_DATA_TYPE_COUNT 4
+#define EEPROM_MAGIC 0xC245A015UL
+#define EEPROM_DATA_TYPE_COUNT 6
 #define EEPROM_DATA_SETTINGS_COUNT 8
 
-#define GENERAL_SETTINGS_COUNT 5
+#define GENERAL_SETTINGS_COUNT 6
 #define PID_SETTINGS_COUNT 3
 #define OPAMP_SETTINGS_COUNT 3
 
@@ -57,16 +57,24 @@ public:
         SOUND_HEATER_OFF
     };
 
+    enum TipType : uint8_t
+    {
+        C245,
+        T12
+    };
+
     enum SettingType : uint8_t
     {
         GENERAL_SETTINGS,
         PID_SETTINGS,
         OPAMP_SETTINGS,
-        CAL_SETTINGS
+        C245_CAL_SETTINGS,
+        T12_CAL_SETTINGS
     };
 
     enum GeneralSettings : uint8_t
     {
+        TIP_TYPE_SET,
         TEMP_SELECT_STEP_SET,
         MAX_OUTPUT_PCT_SET,
         INITIAL_TEMP_SET,
@@ -109,7 +117,7 @@ private:
         float value;
         float step;
         uint8_t decPlaces;
-        char unit[5];
+        char unit[10];
     };
 
     struct StoredData
@@ -124,36 +132,53 @@ private:
         bool changed = false;
 
         Iron::Setting generalSettings[GENERAL_SETTINGS_COUNT] = {
+            {"Tip Type", 0, 1, 0, 1, 0, "tip"},
             {"Temp Step", 1.0f, 50.0f, 10.0f, 1.0f, 0, "C"},
-            {"Max Output", 10.0f, 90.0f, 75.0f, 1.0f, 0, "%"},
+            {"Max Output", 10.0f, 90.0f, 90.0f, 1.0f, 0, "%"},
             {"Initial Temp", 150.0f, 400.0f, 300.0f, 5.0f, 0, "C"},
             {"Sleep Temp", 150.0f, 250.0f, 150.0f, 5.0f, 0, "C"},
-            {"Beeper", 0, 1, 0, 1, 0, ""}};
+            {"Beeper", 0, 1, 0, 1, 0, "bool"},
+        };
 
         Iron::Setting pidSettings[PID_SETTINGS_COUNT] = {
-            {"KP", 0.0f, 50.0f, 10.0f, 0.1f, 1, ""},
-            {"KI", 0.0f, 50.0f, 8.0f, 0.1f, 1, ""},
-            {"KD", 0.0f, 50.0f, 1.0f, 0.1f, 1, ""}};
+            {"KP", 0.0f, 20.0f, 9.000f, 0.1f, 1, ""},
+            {"KI", 0.0f, 20.0f, 9.000f, 0.1f, 1, ""},
+            {"KD", 0.0f, 20.0f, 0.500f, 0.1f, 1, ""},
+        };
 
         Iron::Setting opAmpSettings[OPAMP_SETTINGS_COUNT] = {
             {"Vref", 0.0f, 3.3f, 3.285, 0.001f, 3, "V"},
             {"Gain", 100.0f, 300.0f, 214.0f, 0.1f, 1, ""},
-            {"ZeroV", 0.0f, 2.0f, 0.001f, 0.001f, 3, "V"}};
+            {"ZeroV", 0.0f, 2.0f, 0.001f, 0.001f, 3, "V"},
+        };
 
-        Iron::CalPoint calPoints[CAL_NPOINTS] = {
-            {3.249f, 150.0f},
-            {4.595f, 200.0f},
-            {5.982f, 250.0f},
-            {7.455f, 300.0f},
-            {8.872f, 350.0f},
-            {10.430f, 400.0f}};
+        Iron::CalPoint calPoints[2][CAL_NPOINTS] = {
+            {
+                // C245
+                {3.370f, 150.0f},
+                {4.610f, 200.0f},
+                {6.070f, 250.0f},
+                {7.640f, 300.0f},
+                {9.180f, 350.0f},
+                {10.580f, 400.0f},
+            },
+            {
+                // T12
+                {1.671f, 150.0f},
+                {2.586f, 200.0f},
+                {3.583f, 250.0f},
+                {4.775f, 300.0f},
+                {6.057f, 350.0f},
+                {7.669f, 400.0f},
+            },
+        };
     };
+
+    double coeffs[2][CAL_NCOEFFS];
 
     float vRef = 3.3f;
     float opAmpGain = 200.0f;
     float opAmpZeroOutputV = 0.0f;
-
-    double coeffs[CAL_NCOEFFS];
 
     float targetTemp = 200.0f;
     float wakeTemp = 200.0f;
@@ -179,6 +204,7 @@ private:
     unsigned long heaterCheckStart = 0;
     float heaterCheckTemp = 0;
 
+    TipType tipType = TipType::C245;
     Status status = STATUS_OFF;
 
     Configuration configuration;
@@ -197,6 +223,7 @@ public:
         bool outputReversed);
 
     void init();
+    void init(bool loadSavedSettings);
     void initCal();
     void saveSettings();
     void loadSettings();
@@ -208,6 +235,8 @@ public:
     void toggle();
     void sleep();
     void wake();
+    void setTipType(TipType type);
+    TipType getTipType();
     void setOutputRange(float min, float max);
     void setTargetTemp(float temp);
     void incTargetTemp();
@@ -235,6 +264,7 @@ public:
     StoredData getStoredData();
 
     static float readVoltage(uint8_t pin, int samples, int settleTimeUs, float vRef);
-    static uint8_t getSettingsCountForType(uint8_t type);
+    static uint8_t getSettingsCountForType(SettingType type);
+    static String getNameForTipType(TipType type);
 };
 #endif

@@ -43,10 +43,6 @@ void UserInterface::run()
             break;
         case PAGE_CAL_POINTS:
             this->showCalPointsPage();
-            if (this->iron->getStatus() == Iron::Status::STATUS_FAULT && this->selectedLevel == OPTION_EDIT)
-            {
-                this->selectedLevel = OPTION_SELECT;
-            }
             break;
         case PAGE_RESET:
             this->showResetPage();
@@ -156,32 +152,33 @@ void UserInterface::onPress()
         }
         else
         {
+            this->selectedLevel = OPTION_EDIT;
             switch (this->selectedView)
             {
             case PAGE_CAL_POINTS:
-                this->selectedLevel = OPTION_EDIT;
                 this->iron->initCal();
                 this->iron->setTargetTemp(this->iron->getCalPoint(this->selectedOption - 1).tempC);
                 this->iron->setStatus(Iron::Status::STATUS_HEATING);
                 break;
             default:
-                this->selectedLevel = OPTION_EDIT;
                 break;
             }
         }
         break;
     case OPTION_EDIT:
+        this->selectedLevel = OPTION_SELECT;
         switch (this->selectedView)
         {
+        case PAGE_GENERAL_SETTINGS:
+        case PAGE_PID:
+        case PAGE_OPAMP:
+            this->iron->init(false);
+            break;
         case PAGE_CAL_POINTS:
-            this->selectedLevel = OPTION_SELECT;
             this->iron->setCalPointMv(this->selectedOption - 1, this->iron->getHeaterTempMV());
-            this->iron->setTargetTemp(this->iron->getSetting(Iron::SettingType::GENERAL_SETTINGS, Iron::GeneralSettings::INITIAL_TEMP_SET).value);
-            this->iron->setStatus(Iron::Status::STATUS_OFF);
-            this->iron->tempCoefficientCalculation();
+            this->iron->init(false);
             break;
         default:
-            this->selectedLevel = OPTION_SELECT;
             break;
         }
         break;
@@ -196,7 +193,7 @@ void UserInterface::onLongPress()
     {
     case DASHBOARD:
         this->selectView(View::MENU);
-        this->iron->sleep();
+        this->iron->setStatus(Iron::Status::STATUS_OFF);
         break;
     default:
         this->selectView(View::DASHBOARD);
@@ -210,25 +207,25 @@ void UserInterface::onLongPress()
 
 void UserInterface::prevSelection()
 {
-    if (this->selectedOption <= this->minOptionCount)
+    if (this->selectedOption > this->minOptionCount)
     {
-        this->selectedOption = this->minOptionCount;
+        this->selectedOption--;
     }
     else
     {
-        this->selectedOption--;
+        this->selectedOption = this->minOptionCount;
     }
 }
 
 void UserInterface::nextSelection()
 {
-    if (this->selectedOption >= this->maxOptionCount)
+    if (this->selectedOption < this->maxOptionCount)
     {
-        this->selectedOption = this->maxOptionCount;
+        this->selectedOption++;
     }
     else
     {
-        this->selectedOption++;
+        this->selectedOption = this->maxOptionCount;
     }
 }
 
@@ -250,15 +247,15 @@ void UserInterface::decOptionOffset()
     }
 }
 
-void UserInterface::incOptionOffset(uint8_t limit)
+void UserInterface::incOptionOffset(uint8_t max)
 {
-    if (this->optionOffset < limit)
+    if (this->optionOffset < max)
     {
         this->optionOffset++;
     }
     else
     {
-        this->optionOffset = limit;
+        this->optionOffset = max;
     }
 }
 
@@ -276,7 +273,7 @@ void UserInterface::showIntroMsg()
     this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, yOffset, label.c_str());
     label = String("C245/T12");
     this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 12 + yOffset, label.c_str());
-    label = String("Soldering Station");
+    label = String("SOLDERING STATION");
     this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 12 * 2 + yOffset, label.c_str());
     label = String("By T.Temourtzidis");
     this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 12 * 3 + yOffset, label.c_str());
@@ -356,7 +353,29 @@ void UserInterface::showDashboard()
     this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(ironTemp)) / 2, this->lcd->getHeight() / 2);
     this->lcd->print(ironTemp);
 
-    this->drawStatus();
+    String status;
+
+    switch (this->iron->getStatus())
+    {
+    case Iron::Status::STATUS_HEATING:
+        status = "HEATER ON";
+        break;
+    case Iron::Status::STATUS_FAULT:
+        status = "ERROR";
+        break;
+    case Iron::Status::STATUS_OFF:
+        status = "HEATER OFF";
+        break;
+    case Iron::Status::STATUS_SCREENSAVER:
+    case Iron::Status::STATUS_SLEEP:
+        status = "SLEEP";
+        break;
+    }
+
+    this->lcd->setFont(u8g2_font_spleen8x16_mu);
+    this->lcd->setFontPosTop();
+    this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(status.c_str())) / 2, this->lcd->getHeight() - 14);
+    this->lcd->print(status);
 }
 
 void UserInterface::showMenu()
@@ -455,7 +474,12 @@ void UserInterface::showCalPointsPage()
         this->viewInit = false;
     }
 
-    this->drawTitle("TIP CALIBRATION");
+    if (this->iron->getStatus() == Iron::Status::STATUS_FAULT && this->selectedLevel == OPTION_EDIT)
+    {
+        this->selectedLevel = OPTION_SELECT;
+    }
+
+    this->drawTitle(Iron::getNameForTipType(this->iron->getTipType()) + " TIP CAL");
 
     bool selected = false;
     String label;
@@ -503,7 +527,7 @@ void UserInterface::showCalPointsPage()
     label = String((int)this->iron->getHeaterTemp()) + "C";
     this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 4, 24, label.c_str());
 
-    label = String(this->iron->getHeaterTempMV(), 2) + "mV";
+    label = String(this->iron->getHeaterTempMV(), 2);
     this->lcd->drawStr(this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 4, 36, label.c_str());
 
     label = String((int)this->iron->getHeaterOutputPct()) + "%";
@@ -586,13 +610,21 @@ void UserInterface::drawSelect(Iron::SettingType settingType, uint8_t maxOptions
         label = String(this->iron->getSetting(settingType, index).label) + String(": ");
         unit = String(this->iron->getSetting(settingType, index).unit);
 
-        if (decPlaces == 0)
+        if (strcmp(unit.c_str(), "tip") == 0)
+        {
+            label += Iron::getNameForTipType((Iron::TipType)value);
+        }
+        else if (strcmp(unit.c_str(), "bool") == 0)
+        {
+            label += String((value == 1) ? "YES" : "NO");
+        }
+        else if (decPlaces == 0)
         {
             label += String((int)(value)) + unit;
         }
         else
         {
-            label += String(value, decPlaces);
+            label += String(value, decPlaces) + unit;
         }
 
         if (selected)
@@ -613,33 +645,6 @@ void UserInterface::drawSelect(Iron::SettingType settingType, uint8_t maxOptions
     }
 }
 
-void UserInterface::drawStatus()
-{
-    String status;
-
-    switch (this->iron->getStatus())
-    {
-    case Iron::Status::STATUS_HEATING:
-        status = "HEATER ON";
-        break;
-    case Iron::Status::STATUS_FAULT:
-        status = "ERROR";
-        break;
-    case Iron::Status::STATUS_OFF:
-        status = "HEATER OFF";
-        break;
-    case Iron::Status::STATUS_SCREENSAVER:
-    case Iron::Status::STATUS_SLEEP:
-        status = "SLEEP";
-        break;
-    }
-
-    this->lcd->setFont(u8g2_font_spleen8x16_mu);
-    this->lcd->setFontPosBottom();
-    this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(status.c_str())) / 2, this->lcd->getHeight());
-    this->lcd->print(status);
-}
-
 void UserInterface::drawLoadingBar(uint8_t x, uint8_t y, uint8_t width, uint8_t height, uint8_t percentage)
 {
     // Draw outer border
@@ -649,9 +654,5 @@ void UserInterface::drawLoadingBar(uint8_t x, uint8_t y, uint8_t width, uint8_t 
     uint8_t fillHeight = (height - 4) * percentage / 100;
 
     // Draw filled area from bottom upwards
-    this->lcd->drawBox(
-        x + 2,
-        y + height - 2 - fillHeight,
-        width - 4,
-        fillHeight);
+    this->lcd->drawBox(x + 2, y + height - 2 - fillHeight, width - 4, fillHeight);
 }
