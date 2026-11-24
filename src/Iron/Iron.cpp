@@ -64,10 +64,10 @@ void Iron::readTemp()
 
         this->heaterTempMV = (volts - this->opAmpZeroOutputV) * 1000.0f / this->opAmpGain;
 
-        this->heaterTemp = this->coeffs[this->tip][0] * pow(this->heaterTempMV, 3);
-        this->heaterTemp += this->coeffs[this->tip][1] * pow(this->heaterTempMV, 2);
-        this->heaterTemp += this->coeffs[this->tip][2] * this->heaterTempMV;
-        this->heaterTemp += this->coeffs[this->tip][3];
+        this->heaterTemp = this->coeffs[0] * pow(this->heaterTempMV, 3);
+        this->heaterTemp += this->coeffs[1] * pow(this->heaterTempMV, 2);
+        this->heaterTemp += this->coeffs[2] * this->heaterTempMV;
+        this->heaterTemp += this->coeffs[3];
 
         this->tempMeasureActive = false;
     }
@@ -144,14 +144,14 @@ bool Iron::tcCoefficientCalculation()
         t[i] = this->configuration.calPoints[this->tip][i].tempC;
     }
 
-    if (fitCurve(CAL_ORDER, CAL_NPOINTS, mv, t, CAL_NCOEFFS, this->coeffs[this->tip]) != 0)
+    if (fitCurve(CAL_ORDER, CAL_NPOINTS, mv, t, CAL_NCOEFFS, this->coeffs) != 0)
     {
         return false;
     }
 
     for (int i = 0; i < CAL_NCOEFFS; i++)
     {
-        if (!isfinite(this->coeffs[this->tip][i]))
+        if (!isfinite(this->coeffs[i]))
         {
             return false;
         }

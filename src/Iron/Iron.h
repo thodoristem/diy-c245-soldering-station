@@ -192,7 +192,7 @@ private:
         };
     };
 
-    double coeffs[TIP_COUNT][CAL_NCOEFFS];
+    double coeffs[CAL_NCOEFFS];
 
     float vRef = 3.3f;
     float opAmpGain = 200.0f;

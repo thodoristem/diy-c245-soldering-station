@@ -325,15 +325,21 @@ void UserInterface::showDashboard()
     char ironTemp[10];
     char ironSetTemp[10];
     char ironOutput[10];
+    char tip[10];
 
     sprintf(ironTemp, "%03d", (int)this->iron->getHeaterTemp());
     sprintf(ironSetTemp, "%03d\u00B0C", (int)this->iron->getTargetTemp());
     sprintf(ironOutput, "%3d%%", (int)this->iron->getHeaterOutputPct());
+    sprintf(tip, "%d", (int)this->iron->getTip());
 
     this->lcd->setFontPosTop();
     this->lcd->setFont(u8g2_font_spleen8x16_mf);
     this->lcd->drawUTF8(15, 2, ironSetTemp);
     this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 15, 2, ironOutput);
+
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    this->lcd->drawStr(20, 22, "TIP");
+    this->lcd->drawStr(26, 32, tip);
 
     // Debug EEPROM
     // this->lcd->setCursor(20, 20);
