@@ -344,8 +344,8 @@ void UserInterface::showDashboard()
     this->lcd->drawRFrame(16, 15, this->lcd->getWidth() - 32, this->lcd->getHeight() - 30, 8);
 
     this->lcd->setFont(u8g2_font_spleen6x12_mf);
-    this->lcd->drawStr(24, 22, "TIP");
-    this->lcd->drawStr(30, 32, tip);
+    this->lcd->drawStr(23, 22, "TIP");
+    this->lcd->drawStr(29, 32, tip);
 
     this->lcd->drawUTF8(this->lcd->getWidth() / 2 + 30, this->lcd->getHeight() / 2 - 10, "\u00B0C");
 
