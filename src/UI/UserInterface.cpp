@@ -331,7 +331,7 @@ void UserInterface::showDashboard()
     sprintf(ironOutput, "%3d%%", (int)this->iron->getHeaterOutputPct());
 
     this->lcd->setFontPosTop();
-    this->lcd->setFont(u8g2_font_spleen8x16_mu);
+    this->lcd->setFont(u8g2_font_spleen8x16_mf);
     this->lcd->drawUTF8(15, 2, ironSetTemp);
     this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 15, 2, ironOutput);
 
@@ -361,7 +361,7 @@ void UserInterface::showDashboard()
         status = "HEATER ON";
         break;
     case Iron::Status::STATUS_FAULT:
-        status = "ERROR";
+        status = "NO TIP";
         break;
     case Iron::Status::STATUS_OFF:
         status = "HEATER OFF";
@@ -479,8 +479,7 @@ void UserInterface::showCalPointsPage()
         this->selectedLevel = OPTION_SELECT;
     }
 
-    this->drawTitle(Iron::getNameForTipType(this->iron->getTipType()) + " TIP CAL");
-
+    this->drawTitle("TIP-" + String(this->iron->getTip()) + " CALIBRATION");
     bool selected = false;
     String label;
     uint8_t index = 0;
@@ -612,7 +611,7 @@ void UserInterface::drawSelect(Iron::SettingType settingType, uint8_t maxOptions
 
         if (strcmp(unit.c_str(), "tip") == 0)
         {
-            label += Iron::getNameForTipType((Iron::TipType)value);
+            label += "TIP-" + String((int)value);
         }
         else if (strcmp(unit.c_str(), "bool") == 0)
         {
@@ -647,12 +646,7 @@ void UserInterface::drawSelect(Iron::SettingType settingType, uint8_t maxOptions
 
 void UserInterface::drawLoadingBar(uint8_t x, uint8_t y, uint8_t width, uint8_t height, uint8_t percentage)
 {
-    // Draw outer border
     this->lcd->drawFrame(x, y, width, height);
-
-    // Calculate filled height
     uint8_t fillHeight = (height - 4) * percentage / 100;
-
-    // Draw filled area from bottom upwards
     this->lcd->drawBox(x + 2, y + height - 2 - fillHeight, width - 4, fillHeight);
 }

@@ -2,8 +2,8 @@
 #define Iron_H
 
 #include <Arduino.h>
+#include <at24c256.h>
 #include <QuickPID.h>
-#include <curveFitting.h>
 
 #define ADC_BITS 12
 #define ADC_MAX 4095
@@ -22,17 +22,19 @@
 #define HEATER_CHECK_INTERVAL_MS 2000
 #define HEATER_CHECK_MIN_TEMP_RIZE 2.0f
 
-#define EEPROM_MAGIC 0xC245A015UL
-#define EEPROM_DATA_TYPE_COUNT 6
-#define EEPROM_DATA_SETTINGS_COUNT 8
-
 #define GENERAL_SETTINGS_COUNT 6
 #define PID_SETTINGS_COUNT 3
 #define OPAMP_SETTINGS_COUNT 3
 
+#define TIP_COUNT 5
+
 #define CAL_NPOINTS 6
 #define CAL_ORDER 3
 #define CAL_NCOEFFS CAL_ORDER + 1
+
+#define EEPROM_MAGIC 0xC245A000UL
+#define EEPROM_DATA_TYPE_COUNT 6
+#define EEPROM_DATA_SETTINGS_COUNT 10
 
 class Iron
 {
@@ -57,24 +59,17 @@ public:
         SOUND_HEATER_OFF
     };
 
-    enum TipType : uint8_t
-    {
-        C245,
-        T12
-    };
-
     enum SettingType : uint8_t
     {
         GENERAL_SETTINGS,
         PID_SETTINGS,
         OPAMP_SETTINGS,
-        C245_CAL_SETTINGS,
-        T12_CAL_SETTINGS
+        CAL_SETTINGS
     };
 
     enum GeneralSettings : uint8_t
     {
-        TIP_TYPE_SET,
+        TIP_SET,
         TEMP_SELECT_STEP_SET,
         MAX_OUTPUT_PCT_SET,
         INITIAL_TEMP_SET,
@@ -97,6 +92,7 @@ public:
     };
 
 private:
+    AT24C256 *eeprom;
     QuickPID *pid;
 
     uint8_t heaterOutputPin;
@@ -124,7 +120,7 @@ private:
     {
         uint32_t magic = EEPROM_MAGIC;
         uint32_t saveCount = 0;
-        float data[EEPROM_DATA_TYPE_COUNT][EEPROM_DATA_SETTINGS_COUNT];
+        float data[EEPROM_DATA_TYPE_COUNT + TIP_COUNT][EEPROM_DATA_SETTINGS_COUNT];
     };
 
     struct Configuration
@@ -132,7 +128,7 @@ private:
         bool changed = false;
 
         Iron::Setting generalSettings[GENERAL_SETTINGS_COUNT] = {
-            {"Tip Type", 0, 1, 0, 1, 0, "tip"},
+            {"Tip", 0, TIP_COUNT, 0, 1, 0, "tip"},
             {"Temp Step", 1.0f, 50.0f, 10.0f, 1.0f, 0, "C"},
             {"Max Output", 10.0f, 90.0f, 90.0f, 1.0f, 0, "%"},
             {"Initial Temp", 150.0f, 400.0f, 300.0f, 5.0f, 0, "C"},
@@ -152,9 +148,8 @@ private:
             {"ZeroV", 0.0f, 2.0f, 0.001f, 0.001f, 3, "V"},
         };
 
-        Iron::CalPoint calPoints[2][CAL_NPOINTS] = {
+        Iron::CalPoint calPoints[TIP_COUNT][CAL_NPOINTS] = {
             {
-                // C245
                 {3.370f, 150.0f},
                 {4.610f, 200.0f},
                 {6.070f, 250.0f},
@@ -163,7 +158,30 @@ private:
                 {10.580f, 400.0f},
             },
             {
-                // T12
+                {1.671f, 150.0f},
+                {2.586f, 200.0f},
+                {3.583f, 250.0f},
+                {4.775f, 300.0f},
+                {6.057f, 350.0f},
+                {7.669f, 400.0f},
+            },
+            {
+                {1.671f, 150.0f},
+                {2.586f, 200.0f},
+                {3.583f, 250.0f},
+                {4.775f, 300.0f},
+                {6.057f, 350.0f},
+                {7.669f, 400.0f},
+            },
+            {
+                {1.671f, 150.0f},
+                {2.586f, 200.0f},
+                {3.583f, 250.0f},
+                {4.775f, 300.0f},
+                {6.057f, 350.0f},
+                {7.669f, 400.0f},
+            },
+            {
                 {1.671f, 150.0f},
                 {2.586f, 200.0f},
                 {3.583f, 250.0f},
@@ -174,11 +192,13 @@ private:
         };
     };
 
-    double coeffs[2][CAL_NCOEFFS];
+    double coeffs[TIP_COUNT][CAL_NCOEFFS];
 
     float vRef = 3.3f;
     float opAmpGain = 200.0f;
     float opAmpZeroOutputV = 0.0f;
+
+    uint8_t tip = 0;
 
     float targetTemp = 200.0f;
     float wakeTemp = 200.0f;
@@ -204,7 +224,6 @@ private:
     unsigned long heaterCheckStart = 0;
     float heaterCheckTemp = 0;
 
-    TipType tipType = TipType::C245;
     Status status = STATUS_OFF;
 
     Configuration configuration;
@@ -237,8 +256,8 @@ public:
     void sleep();
     void wake();
 
-    void setTipType(TipType type);
-    TipType getTipType();
+    void setTip(uint8_t tip);
+    uint8_t getTip();
 
     void setOutputRange(float min, float max);
 
@@ -274,6 +293,5 @@ public:
     Configuration getConfig();
     StoredData getStoredData();
     static uint8_t getSettingsCountForType(SettingType type);
-    static String getNameForTipType(TipType type);
 };
 #endif

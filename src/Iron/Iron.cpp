@@ -1,9 +1,10 @@
 #include <Iron/Iron.h>
+#include <Wire.h>
+#include <at24c256.h>
+#include <curveFitting.h>
 
 #define FLASH_DEBUG 0
 #define USING_FLASH_SECTOR_NUMBER 62
-
-#include <FlashStorage_STM32F1.h>
 
 Iron::Iron(
     uint8_t heaterOutputPin,
@@ -51,27 +52,22 @@ void Iron::readTemp()
 
     if (millis() - this->tempMeasureStart >= TEMP_MEASURE_SAMPLES_TIME_MS)
     {
-        // Stop heater
         this->heaterOutputOff();
 
-        // Take temp measurement
         float volts = Iron::readVoltage(
             this->heaterTempPin,
             TEMP_MEASURE_SAMPLES,
             TEMP_MEASURE_SETTLE_TIME_US,
             this->vRef);
 
-        // Resume heater
         this->heaterOutputUpdate();
 
-        // Convert amplifier output to thermocouple millivolts.
         this->heaterTempMV = (volts - this->opAmpZeroOutputV) * 1000.0f / this->opAmpGain;
 
-        // 4th Order Polynomial c0 * mV^3 + c1 * mV^2 + c2 * mV + c3
-        this->heaterTemp = this->coeffs[this->tipType][0] * pow(this->heaterTempMV, 3);
-        this->heaterTemp += this->coeffs[this->tipType][1] * pow(this->heaterTempMV, 2);
-        this->heaterTemp += this->coeffs[this->tipType][2] * this->heaterTempMV;
-        this->heaterTemp += this->coeffs[this->tipType][3];
+        this->heaterTemp = this->coeffs[this->tip][0] * pow(this->heaterTempMV, 3);
+        this->heaterTemp += this->coeffs[this->tip][1] * pow(this->heaterTempMV, 2);
+        this->heaterTemp += this->coeffs[this->tip][2] * this->heaterTempMV;
+        this->heaterTemp += this->coeffs[this->tip][3];
 
         this->tempMeasureActive = false;
     }
@@ -144,18 +140,18 @@ bool Iron::tcCoefficientCalculation()
 
     for (int i = 0; i < CAL_NPOINTS; i++)
     {
-        mv[i] = this->configuration.calPoints[this->tipType][i].mV;
-        t[i] = this->configuration.calPoints[this->tipType][i].tempC;
+        mv[i] = this->configuration.calPoints[this->tip][i].mV;
+        t[i] = this->configuration.calPoints[this->tip][i].tempC;
     }
 
-    if (fitCurve(CAL_ORDER, CAL_NPOINTS, mv, t, CAL_NCOEFFS, this->coeffs[this->tipType]) != 0)
+    if (fitCurve(CAL_ORDER, CAL_NPOINTS, mv, t, CAL_NCOEFFS, this->coeffs[this->tip]) != 0)
     {
         return false;
     }
 
     for (int i = 0; i < CAL_NCOEFFS; i++)
     {
-        if (!isfinite(this->coeffs[this->tipType][i]))
+        if (!isfinite(this->coeffs[this->tip][i]))
         {
             return false;
         }
@@ -173,6 +169,9 @@ void Iron::init(bool loadSavedSettings)
 {
     delay(500);
 
+    Wire.begin();
+    this->eeprom = new AT24C256(AT24C_ADDRESS_0, Wire);
+
     if (loadSavedSettings)
     {
         this->loadSettings();
@@ -180,7 +179,7 @@ void Iron::init(bool loadSavedSettings)
 
     this->tcCoefficientCalculation();
 
-    this->tipType = (TipType)this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TIP_TYPE_SET).value;
+    this->tip = (uint8_t)this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TIP_SET).value;
     this->vRef = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::VREF_SET).value;
     this->opAmpGain = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_GAIN_SET).value;
     this->opAmpZeroOutputV = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_ZERO_OUTPUT_V_SET).value;
@@ -295,14 +294,14 @@ void Iron::wake()
     }
 }
 
-void Iron::setTipType(TipType type)
+void Iron::setTip(uint8_t tip)
 {
-    this->tipType = type;
+    this->tip = tip;
 }
 
-Iron::TipType Iron::getTipType()
+uint8_t Iron::getTip()
 {
-    return this->tipType;
+    return this->tip;
 }
 
 void Iron::setOutputRange(float minPCT, float maxPCT)
@@ -484,26 +483,26 @@ void Iron::saveSettings()
         return;
     }
 
-    for (uint8_t i = 0; i < EEPROM_DATA_TYPE_COUNT; i++)
+    for (uint8_t typeIndex = 0; typeIndex < EEPROM_DATA_TYPE_COUNT; typeIndex++)
     {
-        for (uint8_t j = 0; j < Iron::getSettingsCountForType((SettingType)i); j++)
+        for (uint8_t settingIndex = 0; settingIndex < Iron::getSettingsCountForType((SettingType)typeIndex); settingIndex++)
         {
-            switch (i)
+            switch (typeIndex)
             {
             case SettingType::GENERAL_SETTINGS:
-                this->storedData.data[i][j] = (float)this->configuration.generalSettings[j].value;
+                this->storedData.data[typeIndex][settingIndex] = (float)this->configuration.generalSettings[settingIndex].value;
                 break;
             case SettingType::PID_SETTINGS:
-                this->storedData.data[i][j] = (float)this->configuration.pidSettings[j].value;
+                this->storedData.data[typeIndex][settingIndex] = (float)this->configuration.pidSettings[settingIndex].value;
                 break;
             case SettingType::OPAMP_SETTINGS:
-                this->storedData.data[i][j] = (float)this->configuration.opAmpSettings[j].value;
+                this->storedData.data[typeIndex][settingIndex] = (float)this->configuration.opAmpSettings[settingIndex].value;
                 break;
-            case SettingType::C245_CAL_SETTINGS:
-                this->storedData.data[i][j] = (float)this->configuration.calPoints[TipType::C245][j].mV;
-                break;
-            case SettingType::T12_CAL_SETTINGS:
-                this->storedData.data[i][j] = (float)this->configuration.calPoints[TipType::T12][j].mV;
+            case SettingType::CAL_SETTINGS:
+                for (uint8_t tipIndex = 0; tipIndex < TIP_COUNT; tipIndex++)
+                {
+                    this->storedData.data[typeIndex + tipIndex][settingIndex] = (float)this->configuration.calPoints[tipIndex][settingIndex].mV;
+                }
                 break;
             }
         }
@@ -512,12 +511,7 @@ void Iron::saveSettings()
     this->storedData.saveCount++;
     this->storedData.magic = EEPROM_MAGIC;
 
-    EEPROM.put(0, this->storedData);
-
-    if (!EEPROM.getCommitASAP())
-    {
-        EEPROM.commit();
-    }
+    this->eeprom->put(0, this->storedData);
 
     this->configuration.changed = false;
 }
@@ -526,7 +520,7 @@ void Iron::loadSettings()
 {
     StoredData tempStoredData;
 
-    EEPROM.get(0, tempStoredData);
+    this->eeprom->get(0, tempStoredData);
 
     if (tempStoredData.magic != EEPROM_MAGIC)
     {
@@ -537,26 +531,26 @@ void Iron::loadSettings()
 
     this->storedData = tempStoredData;
 
-    for (uint8_t i = 0; i < EEPROM_DATA_TYPE_COUNT; i++)
+    for (uint8_t typeIndex = 0; typeIndex < EEPROM_DATA_TYPE_COUNT; typeIndex++)
     {
-        for (uint8_t j = 0; j < Iron::getSettingsCountForType((SettingType)i); j++)
+        for (uint8_t settingIndex = 0; settingIndex < Iron::getSettingsCountForType((SettingType)typeIndex); settingIndex++)
         {
-            switch (i)
+            switch (typeIndex)
             {
             case SettingType::GENERAL_SETTINGS:
-                this->configuration.generalSettings[j].value = this->storedData.data[i][j];
+                this->configuration.generalSettings[settingIndex].value = this->storedData.data[typeIndex][settingIndex];
                 break;
             case SettingType::PID_SETTINGS:
-                this->configuration.pidSettings[j].value = this->storedData.data[i][j];
+                this->configuration.pidSettings[settingIndex].value = this->storedData.data[typeIndex][settingIndex];
                 break;
             case SettingType::OPAMP_SETTINGS:
-                this->configuration.opAmpSettings[j].value = this->storedData.data[i][j];
+                this->configuration.opAmpSettings[settingIndex].value = this->storedData.data[typeIndex][settingIndex];
                 break;
-            case SettingType::C245_CAL_SETTINGS:
-                this->configuration.calPoints[TipType::C245][j].mV = this->storedData.data[i][j];
-                break;
-            case SettingType::T12_CAL_SETTINGS:
-                this->configuration.calPoints[TipType::T12][j].mV = this->storedData.data[i][j];
+            case SettingType::CAL_SETTINGS:
+                for (uint8_t tipIndex = 0; tipIndex < TIP_COUNT; tipIndex++)
+                {
+                    this->configuration.calPoints[tipIndex][settingIndex].mV = this->storedData.data[typeIndex + tipIndex][settingIndex];
+                }
                 break;
             }
         }
@@ -612,6 +606,7 @@ void Iron::incSetting(Iron::SettingType type, uint8_t key)
     {
         value = max;
     }
+
     this->setSetting(type, key, value);
 }
 
@@ -629,19 +624,19 @@ void Iron::decSetting(Iron::SettingType type, uint8_t key)
     {
         value = min;
     }
+
     this->setSetting(type, key, value);
 }
 
 Iron::CalPoint Iron::getCalPoint(uint8_t index)
 {
-    return this->configuration.calPoints[this->tipType][index];
+    return this->configuration.calPoints[this->tip][index];
 }
 
 void Iron::setCalPointMv(uint8_t index, float mV)
 {
     this->configuration.changed = true;
-
-    this->configuration.calPoints[this->tipType][index].mV = mV;
+    this->configuration.calPoints[this->tip][index].mV = mV;
 }
 
 Iron::Configuration Iron::getConfig()
@@ -664,23 +659,9 @@ uint8_t Iron::getSettingsCountForType(SettingType type)
         return PID_SETTINGS_COUNT;
     case SettingType::OPAMP_SETTINGS:
         return OPAMP_SETTINGS_COUNT;
-    case SettingType::C245_CAL_SETTINGS:
-    case SettingType::T12_CAL_SETTINGS:
+    case SettingType::CAL_SETTINGS:
         return CAL_NPOINTS;
     default:
         return 0;
-    }
-}
-
-String Iron::getNameForTipType(TipType type)
-{
-    switch (type)
-    {
-    case Iron::TipType::C245:
-        return String("C245");
-    case Iron::TipType::T12:
-        return String("T12");
-    default:
-        return String("NAN");
     }
 }
