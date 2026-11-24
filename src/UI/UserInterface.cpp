@@ -330,33 +330,28 @@ void UserInterface::showDashboard()
     sprintf(ironTemp, "%03d", (int)this->iron->getHeaterTemp());
     sprintf(ironSetTemp, "%03d\u00B0C", (int)this->iron->getTargetTemp());
     sprintf(ironOutput, "%3d%%", (int)this->iron->getHeaterOutputPct());
-    sprintf(tip, "%d", (int)this->iron->getTip());
+    sprintf(tip, "%d", (int)(this->iron->getTip() + 1));
+
+    this->drawLoadingBar(0, 0, 7, this->lcd->getHeight(), this->iron->getTargetTempPct());
+    this->drawLoadingBar(6, 0, 7, this->lcd->getHeight(), this->iron->getHeaterTempPct());
+    this->drawLoadingBar(this->lcd->getWidth() - 13, 0, 13, this->lcd->getHeight(), this->iron->getHeaterOutputPct());
 
     this->lcd->setFontPosTop();
     this->lcd->setFont(u8g2_font_spleen8x16_mf);
     this->lcd->drawUTF8(15, 2, ironSetTemp);
     this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 15, 2, ironOutput);
 
-    this->lcd->setFont(u8g2_font_spleen6x12_mf);
-    this->lcd->drawStr(20, 22, "TIP");
-    this->lcd->drawStr(26, 32, tip);
-
-    // Debug EEPROM
-    // this->lcd->setCursor(20, 20);
-    // this->lcd->print(this->iron->getStoredData().saveCount);
-    // this->lcd->setCursor(14, 28);
-    // this->lcd->print(sizeof(this->iron->getStoredData()));
-
-    this->drawLoadingBar(0, 0, 7, this->lcd->getHeight(), this->iron->getTargetTempPct());
-    this->drawLoadingBar(6, 0, 7, this->lcd->getHeight(), this->iron->getHeaterTempPct());
-    this->drawLoadingBar(this->lcd->getWidth() - 13, 0, 13, this->lcd->getHeight(), this->iron->getHeaterOutputPct());
-
     this->lcd->drawRFrame(16, 15, this->lcd->getWidth() - 32, this->lcd->getHeight() - 30, 8);
 
-    this->lcd->drawUTF8((this->lcd->getWidth() / 2 + 24), this->lcd->getHeight() / 2 - 10, "\u00B0C");
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    this->lcd->drawStr(24, 22, "TIP");
+    this->lcd->drawStr(30, 32, tip);
+
+    this->lcd->drawUTF8(this->lcd->getWidth() / 2 + 30, this->lcd->getHeight() / 2 - 10, "\u00B0C");
+
     this->lcd->setFont(u8g2_font_spleen16x32_mn);
     this->lcd->setFontPosCenter();
-    this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(ironTemp)) / 2, this->lcd->getHeight() / 2);
+    this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(ironTemp)) / 2 + 6, this->lcd->getHeight() / 2);
     this->lcd->print(ironTemp);
 
     String status;
@@ -485,7 +480,7 @@ void UserInterface::showCalPointsPage()
         this->selectedLevel = OPTION_SELECT;
     }
 
-    this->drawTitle("TIP-" + String(this->iron->getTip()) + " CALIBRATION");
+    this->drawTitle("TIP-" + String(this->iron->getTip() + 1) + " CALIBRATION");
     bool selected = false;
     String label;
     uint8_t index = 0;
@@ -617,7 +612,7 @@ void UserInterface::drawSelect(Iron::SettingType settingType, uint8_t maxOptions
 
         if (strcmp(unit.c_str(), "tip") == 0)
         {
-            label += "TIP-" + String((int)value);
+            label += "TIP-" + String((int)(value + 1));
         }
         else if (strcmp(unit.c_str(), "bool") == 0)
         {
