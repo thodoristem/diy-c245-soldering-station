@@ -155,6 +155,18 @@ void UserInterface::onPress()
             this->selectedLevel = OPTION_EDIT;
             switch (this->selectedView)
             {
+            case PAGE_RESET:
+                this->selectedLevel = HOME;
+                this->selectView(View::DASHBOARD);
+                if (this->selectedOption == 1)
+                {
+                    this->iron->resetSettings();
+                }
+                else if (this->selectedOption == 2)
+                {
+                    this->iron->init();
+                }
+                break;
             case PAGE_CAL_POINTS:
                 this->iron->initCal();
                 this->iron->setTargetTemp(this->iron->getCalPoint(this->selectedOption - 1).tempC);
@@ -458,7 +470,7 @@ void UserInterface::showOpAmpPage()
         this->viewInit = false;
     }
 
-    this->drawTitle("OP AMP SETTINGS");
+    this->drawTitle("OP-AMP");
     this->drawSelect(Iron::SettingType::OPAMP_SETTINGS, OPAMP_SETTINGS_COUNT, this->maxOptionsVisible, 2, 22);
 }
 
@@ -540,13 +552,41 @@ void UserInterface::showResetPage()
     {
         this->selectedLevel = OPTION_SELECT;
         this->optionOffset = 0;
-        this->maxOptionsVisible = 2;
+        this->maxOptionsVisible = 0;
         this->minOptionCount = 0;
         this->maxOptionCount = 2;
-        this->selectedOption = 2;
+        this->selectedOption = 0;
         this->viewInit = false;
     }
-    this->drawTitle("RESET SETTINGS");
+
+    this->drawTitle("RESET");
+
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
+    this->lcd->setFontPosCenter();
+
+    String label = "Reset all settings";
+    this->lcd->drawStr(
+        this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2,
+        this->lcd->getHeight() / 2 - 10,
+        label.c_str());
+
+    label = "to default?!";
+    this->lcd->drawStr(
+        this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2,
+        this->lcd->getHeight() / 2 + 2,
+        label.c_str());
+
+    label = "YES";
+    this->drawOption(
+        label, u8g2_font_spleen6x12_mf,
+        10,
+        this->lcd->getHeight() - 12, 12, 2, this->selectedOption == 1);
+
+    label = "NO";
+    this->drawOption(
+        label, u8g2_font_spleen6x12_mf,
+        this->lcd->getWidth() - this->lcd->getStrWidth(label.c_str()) - 18,
+        this->lcd->getHeight() - 12, 12, 4, this->selectedOption == 2);
 }
 
 void UserInterface::drawTitle(String title)
@@ -616,7 +656,7 @@ void UserInterface::drawSelect(Iron::SettingType settingType, uint8_t maxOptions
         }
         else if (strcmp(unit.c_str(), "bool") == 0)
         {
-            label += String((value == 1) ? "YES" : "NO");
+            label += String((value == 1) ? "ON" : "OFF");
         }
         else if (decPlaces == 0)
         {

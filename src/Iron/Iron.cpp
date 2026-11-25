@@ -3,9 +3,6 @@
 #include <at24c256.h>
 #include <curveFitting.h>
 
-#define FLASH_DEBUG 0
-#define USING_FLASH_SECTOR_NUMBER 62
-
 Iron::Iron(
     uint8_t heaterOutputPin,
     uint8_t heaterTempPin,
@@ -255,6 +252,7 @@ void Iron::toggle()
     switch (this->getStatus())
     {
     case STATUS_SLEEP:
+        this->wake();
         return;
     case STATUS_FAULT:
     case STATUS_HEATING:
@@ -509,7 +507,7 @@ void Iron::saveSettings()
     }
 
     this->storedData.saveCount++;
-    this->storedData.magic = EEPROM_MAGIC;
+    this->storedData.magic = this->configuration.eepromMagic;
 
     this->eeprom->put(0, this->storedData);
 
@@ -522,7 +520,7 @@ void Iron::loadSettings()
 
     this->eeprom->get(0, tempStoredData);
 
-    if (tempStoredData.magic != EEPROM_MAGIC)
+    if (tempStoredData.magic != this->configuration.eepromMagic)
     {
         this->configuration.changed = true;
         this->saveSettings();
@@ -555,6 +553,12 @@ void Iron::loadSettings()
             }
         }
     }
+}
+
+void Iron::resetSettings()
+{
+    this->storedData.magic = this->configuration.eepromMagic++;
+    this->init(true);
 }
 
 Iron::Setting Iron::getSetting(Iron::SettingType type, uint8_t key)

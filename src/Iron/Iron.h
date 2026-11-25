@@ -126,6 +126,7 @@ private:
     struct Configuration
     {
         bool changed = false;
+        uint32_t eepromMagic = EEPROM_MAGIC;
 
         Iron::Setting generalSettings[GENERAL_SETTINGS_COUNT] = {
             {"Tip", 0, TIP_COUNT, 0, 1, 0, "tip"},
@@ -137,7 +138,7 @@ private:
         };
 
         Iron::Setting pidSettings[PID_SETTINGS_COUNT] = {
-            {"KP", 0.0f, 20.0f, 9.000f, 0.1f, 1, ""},
+            {"KP", 0.0f, 20.0f, 12.000f, 0.1f, 1, ""},
             {"KI", 0.0f, 20.0f, 9.000f, 0.1f, 1, ""},
             {"KD", 0.0f, 20.0f, 0.500f, 0.1f, 1, ""},
         };
@@ -284,6 +285,7 @@ public:
 
     void saveSettings();
     void loadSettings();
+    void resetSettings();
     Setting getSetting(Iron::SettingType type, uint8_t key);
     void setSetting(Iron::SettingType type, uint8_t key, float value);
     void incSetting(Iron::SettingType type, uint8_t key);
