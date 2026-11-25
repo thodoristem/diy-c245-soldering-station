@@ -130,7 +130,7 @@ void Iron::heaterCheck()
     }
 }
 
-bool Iron::tcCoefficientCalculation()
+bool Iron::tipCoeffsCalculation()
 {
     double mv[CAL_NPOINTS];
     double t[CAL_NPOINTS];
@@ -174,8 +174,6 @@ void Iron::init(bool loadSavedSettings)
         this->loadSettings();
     }
 
-    this->tcCoefficientCalculation();
-
     this->tip = (uint8_t)this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TIP_SET).value;
     this->vRef = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::VREF_SET).value;
     this->opAmpGain = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_GAIN_SET).value;
@@ -185,6 +183,7 @@ void Iron::init(bool loadSavedSettings)
     this->setTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::INITIAL_TEMP_SET).value);
     this->setOutputRange(0.0f, this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_OUTPUT_PCT_SET).value);
 
+    this->tipCoeffsCalculation();
     this->readTemp();
 
     this->pid = new QuickPID(
@@ -438,7 +437,7 @@ void Iron::decTargetTemp(float step)
 }
 
 // ##############################################################################################
-// ## TIP TEMPRATURE ################################################################################
+// ## TIP TEMPRATURE ############################################################################
 // ##############################################################################################
 
 float Iron::getHeaterTemp()
@@ -507,7 +506,7 @@ void Iron::saveSettings()
     }
 
     this->storedData.saveCount++;
-    this->storedData.magic = this->configuration.eepromMagic;
+    this->storedData.magic = EEPROM_MAGIC;
 
     this->eeprom->put(0, this->storedData);
 
@@ -520,7 +519,7 @@ void Iron::loadSettings()
 
     this->eeprom->get(0, tempStoredData);
 
-    if (tempStoredData.magic != this->configuration.eepromMagic)
+    if (tempStoredData.magic != EEPROM_MAGIC || this->_resetSettings)
     {
         this->configuration.changed = true;
         this->saveSettings();
@@ -557,8 +556,8 @@ void Iron::loadSettings()
 
 void Iron::resetSettings()
 {
-    this->storedData.magic = this->configuration.eepromMagic++;
-    this->init(true);
+    this->_resetSettings = true;
+    this->init();
 }
 
 Iron::Setting Iron::getSetting(Iron::SettingType type, uint8_t key)

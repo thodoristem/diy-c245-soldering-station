@@ -126,7 +126,6 @@ private:
     struct Configuration
     {
         bool changed = false;
-        uint32_t eepromMagic = EEPROM_MAGIC;
 
         Iron::Setting generalSettings[GENERAL_SETTINGS_COUNT] = {
             {"Tip", 0, TIP_COUNT, 0, 1, 0, "tip"},
@@ -229,6 +228,7 @@ private:
 
     Configuration configuration;
     StoredData storedData;
+    bool _resetSettings = false;
 
     void runPID();
     void readTemp();
@@ -243,7 +243,7 @@ public:
 
     static float readVoltage(uint8_t pin, int samples, int settleTimeUs, float vRef);
 
-    bool tcCoefficientCalculation();
+    bool tipCoeffsCalculation();
 
     void init();
     void init(bool loadSavedSettings);

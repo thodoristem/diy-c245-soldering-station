@@ -580,7 +580,7 @@ void UserInterface::showResetPage()
     this->drawOption(
         label, u8g2_font_spleen6x12_mf,
         10,
-        this->lcd->getHeight() - 12, 12, 2, this->selectedOption == 1);
+        this->lcd->getHeight() - 12, 12, 4, this->selectedOption == 1);
 
     label = "NO";
     this->drawOption(
