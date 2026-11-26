@@ -79,7 +79,7 @@ void Iron::runPID()
             this->heaterOutputUpdate();
         }
 
-        if (this->getHeaterTemp() > this->getTargetTemp() + 1)
+        if (this->getHeaterTemp() > this->getTargetTemp() + 5)
         {
             this->pid->Reset();
         }
@@ -181,6 +181,7 @@ void Iron::init(bool loadSavedSettings)
     this->minTemp = this->getCalPoint(0).tempC;
     this->maxTemp = this->getCalPoint(CAL_NPOINTS - 1).tempC;
     this->setTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::INITIAL_TEMP_SET).value);
+    this->wakeTemp = this->targetTemp;
     this->setOutputRange(0.0f, this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_OUTPUT_PCT_SET).value);
 
     this->tipCoeffsCalculation();
@@ -194,7 +195,7 @@ void Iron::init(bool loadSavedSettings)
         this->getSetting(SettingType::PID_SETTINGS, PidSettings::PID_KI_SET).value,
         this->getSetting(SettingType::PID_SETTINGS, PidSettings::PID_KD_SET).value,
         QuickPID::pMode::pOnError,
-        QuickPID::dMode::dOnError,
+        QuickPID::dMode::dOnMeas,
         QuickPID::iAwMode::iAwCondition,
         QuickPID::Action::direct);
 
@@ -210,8 +211,8 @@ void Iron::init(bool loadSavedSettings)
 
 void Iron::initCal()
 {
-    this->minTemp -= 100;
-    this->maxTemp += 100;
+    this->minTemp = this->configuration.calPoints[this->tip][0].tempC - 50;
+    this->maxTemp = this->configuration.calPoints[this->tip][CAL_NPOINTS - 1].tempC + 50;
     this->disableSleep = true;
 }
 
@@ -250,31 +251,28 @@ void Iron::toggle()
 {
     switch (this->getStatus())
     {
-    case STATUS_SLEEP:
-        this->wake();
-        return;
     case STATUS_FAULT:
+        this->sleep();
+        break;
+    case STATUS_SLEEP:
     case STATUS_HEATING:
-        this->setStatus(STATUS_OFF);
-        this->playTone(SoundEvent::SOUND_HEATER_OFF);
+        this->off();
         break;
     default:
-        this->setStatus(STATUS_HEATING);
-        this->playTone(SoundEvent::SOUND_HEATER_ON);
+        this->on();
         break;
     }
 }
 
 void Iron::sleep()
 {
-    if (this->disableSleep || this->status == Status::STATUS_FAULT)
+    if (this->disableSleep)
     {
         return;
     }
 
     if (this->getStatus() != Iron::Status::STATUS_SLEEP)
     {
-        this->wakeTemp = this->getTargetTemp();
         this->setTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::SLEEP_TEMP_SET).value);
         this->setStatus(Iron::Status::STATUS_SLEEP);
         this->playTone(SoundEvent::SOUND_HEATER_OFF);
@@ -289,6 +287,20 @@ void Iron::wake()
         this->setStatus(Iron::Status::STATUS_HEATING);
         this->playTone(SoundEvent::SOUND_HEATER_ON);
     }
+}
+
+void Iron::off()
+{
+    this->setTargetTemp(this->wakeTemp);
+    this->setStatus(Status::STATUS_OFF);
+    this->playTone(SoundEvent::SOUND_HEATER_OFF);
+}
+
+void Iron::on()
+{
+    this->setTargetTemp(this->wakeTemp);
+    this->setStatus(Status::STATUS_HEATING);
+    this->playTone(SoundEvent::SOUND_HEATER_ON);
 }
 
 void Iron::setTip(uint8_t tip)
@@ -361,7 +373,7 @@ void Iron::setStatus(Status status)
 }
 
 // ##############################################################################################
-// ## TARGET TEMPRATURE #########################################################################
+// ## TIP TEMPRATURE ############################################################################
 // ##############################################################################################
 
 void Iron::setTargetTemp(float temp)
@@ -410,6 +422,12 @@ void Iron::incTargetTemp(float step)
     {
         this->targetTemp = this->maxTemp;
     }
+
+    if (!this->disableSleep)
+    {
+        this->wakeTemp = this->targetTemp;
+    }
+
     this->playTone(SoundEvent::SOUND_TEMP_CHANGE);
 }
 
@@ -433,12 +451,14 @@ void Iron::decTargetTemp(float step)
     {
         this->targetTemp = this->minTemp;
     }
+
+    if (!this->disableSleep)
+    {
+        this->wakeTemp = this->targetTemp;
+    }
+
     this->playTone(SoundEvent::SOUND_TEMP_CHANGE);
 }
-
-// ##############################################################################################
-// ## TIP TEMPRATURE ############################################################################
-// ##############################################################################################
 
 float Iron::getHeaterTemp()
 {

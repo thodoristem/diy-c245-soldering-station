@@ -28,11 +28,11 @@
 
 #define TIP_COUNT 5
 
-#define CAL_NPOINTS 6
+#define CAL_NPOINTS 7
 #define CAL_ORDER 3
 #define CAL_NCOEFFS CAL_ORDER + 1
 
-#define EEPROM_MAGIC 0xC245A000UL
+#define EEPROM_MAGIC 0xC245A001UL
 #define EEPROM_DATA_TYPE_COUNT 6
 #define EEPROM_DATA_SETTINGS_COUNT 10
 
@@ -129,10 +129,10 @@ private:
 
         Iron::Setting generalSettings[GENERAL_SETTINGS_COUNT] = {
             {"Tip", 0, TIP_COUNT, 0, 1, 0, "tip"},
-            {"Temp Step", 1.0f, 50.0f, 10.0f, 1.0f, 0, "C"},
+            {"Temp Step", 1.0f, 50.0f, 10.0f, 1.0f, 0, "\u00B0C"},
             {"Max Output", 10.0f, 90.0f, 90.0f, 1.0f, 0, "%"},
-            {"Initial Temp", 150.0f, 400.0f, 300.0f, 5.0f, 0, "C"},
-            {"Sleep Temp", 150.0f, 250.0f, 150.0f, 5.0f, 0, "C"},
+            {"Initial Temp", 150.0f, 400.0f, 300.0f, 5.0f, 0, "\u00B0C"},
+            {"Sleep Temp", 150.0f, 250.0f, 150.0f, 5.0f, 0, "\u00B0C"},
             {"Beeper", 0, 1, 0, 1, 0, "bool"},
         };
 
@@ -150,14 +150,16 @@ private:
 
         Iron::CalPoint calPoints[TIP_COUNT][CAL_NPOINTS] = {
             {
-                {3.370f, 150.0f},
-                {4.610f, 200.0f},
-                {6.070f, 250.0f},
-                {7.640f, 300.0f},
-                {9.180f, 350.0f},
-                {10.580f, 400.0f},
+                {1.600f, 100.0f},
+                {2.863f, 150.0f},
+                {4.100f, 200.0f},
+                {5.500f, 250.0f},
+                {6.840f, 300.0f},
+                {8.340f, 350.0f},
+                {9.772f, 400.0f},
             },
             {
+                {1.370f, 100.0f},
                 {1.671f, 150.0f},
                 {2.586f, 200.0f},
                 {3.583f, 250.0f},
@@ -166,6 +168,7 @@ private:
                 {7.669f, 400.0f},
             },
             {
+                {1.370f, 100.0f},
                 {1.671f, 150.0f},
                 {2.586f, 200.0f},
                 {3.583f, 250.0f},
@@ -174,6 +177,7 @@ private:
                 {7.669f, 400.0f},
             },
             {
+                {1.370f, 100.0f},
                 {1.671f, 150.0f},
                 {2.586f, 200.0f},
                 {3.583f, 250.0f},
@@ -182,6 +186,7 @@ private:
                 {7.669f, 400.0f},
             },
             {
+                {1.370f, 100.0f},
                 {1.671f, 150.0f},
                 {2.586f, 200.0f},
                 {3.583f, 250.0f},
@@ -233,6 +238,8 @@ private:
     void runPID();
     void readTemp();
     void heaterCheck();
+    void heaterOutputUpdate();
+    void heaterOutputOff();
 
 public:
     Iron(
@@ -250,12 +257,11 @@ public:
     void initCal();
     void run();
 
-    void heaterOutputUpdate();
-    void heaterOutputOff();
-
     void toggle();
     void sleep();
     void wake();
+    void off();
+    void on();
 
     void setTip(uint8_t tip);
     uint8_t getTip();
