@@ -4,7 +4,7 @@
 #include <Iron/Iron.h>
 #include <U8g2lib.h>
 
-#define LCD_INTERVAL_MS 60
+#define LCD_INTERVAL_MS 100
 
 class UserInterface
 {

@@ -400,7 +400,7 @@ void UserInterface::showDashboard()
         break;
     }
 
-    this->lcd->setFont(u8g2_font_spleen8x16_mu);
+    this->lcd->setFont(u8g2_font_spleen8x16_mf);
     this->lcd->setFontPosTop();
     this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(status.c_str())) / 2, this->lcd->getHeight() - 14);
     this->lcd->print(status);

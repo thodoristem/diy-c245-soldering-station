@@ -86,6 +86,7 @@ void Iron::runPID()
     }
     else
     {
+        this->pid->Reset();
         this->heaterOutput = 0;
         this->heaterOutputOff();
     }
@@ -164,8 +165,6 @@ void Iron::init()
 
 void Iron::init(bool loadSavedSettings)
 {
-    delay(500);
-
     Wire.begin();
     this->eeprom = new AT24C256(AT24C_ADDRESS_0, Wire);
 
