@@ -21,6 +21,8 @@ Iron::Iron(
     pinMode(this->heaterTempPin, INPUT);
     pinMode(this->heaterOutputPin, OUTPUT);
     pinMode(this->beeperPin, OUTPUT);
+
+    this->pid = new QuickPID(&this->heaterTemp, &this->heaterOutput, &this->targetTemp);
 }
 
 float Iron::readVoltage(uint8_t pin, int samples, int settleTimeUs, float vRef)
@@ -174,32 +176,28 @@ void Iron::init(bool loadSavedSettings)
     }
 
     this->tip = (uint8_t)this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::TIP_SET).value;
+
     this->vRef = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::VREF_SET).value;
     this->opAmpGain = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_GAIN_SET).value;
     this->opAmpZeroOutputV = this->getSetting(SettingType::OPAMP_SETTINGS, OpAmpSettings::OPAMP_ZERO_OUTPUT_V_SET).value;
     this->minTemp = this->getCalPoint(0).tempC;
     this->maxTemp = this->getCalPoint(CAL_NPOINTS - 1).tempC;
+    this->setOutputRange(0.0f, this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_OUTPUT_PCT_SET).value);
     this->setTargetTemp(this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::INITIAL_TEMP_SET).value);
     this->wakeTemp = this->targetTemp;
-    this->setOutputRange(0.0f, this->getSetting(SettingType::GENERAL_SETTINGS, GeneralSettings::MAX_OUTPUT_PCT_SET).value);
 
     this->tipCoeffsCalculation();
     this->readTemp();
 
-    this->pid = new QuickPID(
-        &this->heaterTemp,
-        &this->heaterOutput,
-        &this->targetTemp,
+    this->pid->SetTunings(
         this->getSetting(SettingType::PID_SETTINGS, PidSettings::PID_KP_SET).value,
         this->getSetting(SettingType::PID_SETTINGS, PidSettings::PID_KI_SET).value,
-        this->getSetting(SettingType::PID_SETTINGS, PidSettings::PID_KD_SET).value,
-        (QuickPID::pMode)this->getSetting(SettingType::PID_SETTINGS, PidSettings::P_MODE).value,
-        (QuickPID::dMode)this->getSetting(SettingType::PID_SETTINGS, PidSettings::D_MODE).value,
-        (QuickPID::iAwMode)this->getSetting(SettingType::PID_SETTINGS, PidSettings::I_AW_MODE).value,
-        QuickPID::Action::direct);
-
+        this->getSetting(SettingType::PID_SETTINGS, PidSettings::PID_KD_SET).value);
+    this->pid->SetProportionalMode((QuickPID::pMode)this->getSetting(SettingType::PID_SETTINGS, PidSettings::P_MODE_SET).value);
+    this->pid->SetDerivativeMode((QuickPID::dMode)this->getSetting(SettingType::PID_SETTINGS, PidSettings::D_MODE_SET).value);
+    this->pid->SetAntiWindupMode((QuickPID::iAwMode)this->getSetting(SettingType::PID_SETTINGS, PidSettings::I_AW_MODE_SET).value);
+    this->pid->SetControllerDirection(QuickPID::Action::direct);
     this->pid->SetMode(QuickPID::Control::automatic);
-    this->pid->SetOutputLimits(this->minOutput, this->maxOutput);
     this->pid->SetSampleTimeUs(PID_SAMPLES_TIME_US);
 
     this->disableSleep = !loadSavedSettings;
@@ -280,6 +278,11 @@ void Iron::sleep()
 
 void Iron::wake()
 {
+    if (this->disableSleep)
+    {
+        return;
+    }
+
     if (this->getStatus() == Iron::Status::STATUS_SLEEP)
     {
         this->setTargetTemp(this->wakeTemp);
@@ -316,6 +319,7 @@ void Iron::setOutputRange(float minPCT, float maxPCT)
 {
     this->minOutput = PWM_MAX / 100.0f * minPCT;
     this->maxOutput = PWM_MAX / 100.0f * maxPCT;
+    this->pid->SetOutputLimits(this->minOutput, this->maxOutput);
 }
 
 void Iron::playTone(SoundEvent event)

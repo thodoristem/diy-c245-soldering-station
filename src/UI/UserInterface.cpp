@@ -125,6 +125,7 @@ void UserInterface::onPress()
         this->iron->toggle();
         break;
     case PAGE_SELECT:
+        this->iron->initCal();
         switch (this->selectedOption)
         {
         case 0:
@@ -149,6 +150,10 @@ void UserInterface::onPress()
         {
             this->selectedLevel = PAGE_SELECT;
             this->selectView(MENU);
+            if (this->iron->getConfig().changed)
+            {
+                this->iron->init(false);
+            }
         }
         else
         {
@@ -164,11 +169,11 @@ void UserInterface::onPress()
                 }
                 else if (this->selectedOption == 2)
                 {
-                    this->iron->init();
+                    this->selectedLevel = PAGE_SELECT;
+                    this->selectView(MENU);
                 }
                 break;
             case PAGE_CAL_POINTS:
-                this->iron->initCal();
                 this->iron->setTargetTemp(this->iron->getCalPoint(this->selectedOption - 1).tempC);
                 this->iron->setStatus(Iron::Status::STATUS_HEATING);
                 break;
@@ -181,11 +186,6 @@ void UserInterface::onPress()
         this->selectedLevel = OPTION_SELECT;
         switch (this->selectedView)
         {
-        case PAGE_GENERAL_SETTINGS:
-        case PAGE_PID:
-        case PAGE_OPAMP:
-            this->iron->init(false);
-            break;
         case PAGE_CAL_POINTS:
             this->iron->setCalPointMv(this->selectedOption - 1, this->iron->getHeaterTempMV());
             this->iron->init(false);
@@ -205,13 +205,13 @@ void UserInterface::onLongPress()
     {
     case DASHBOARD:
         this->selectView(View::MENU);
-        this->iron->setStatus(Iron::Status::STATUS_OFF);
+        this->iron->off();
         break;
     default:
         this->selectView(View::DASHBOARD);
         this->iron->off();
-        this->showSaveMsg();
         this->iron->saveSettings();
+        this->showSaveMsg();
         this->iron->init();
         break;
     }
@@ -274,7 +274,7 @@ void UserInterface::incOptionOffset(uint8_t max)
 void UserInterface::showIntroMsg()
 {
     String label;
-    const uint8_t yOffset = (this->lcd->getHeight() - 12 * 4) / 2;
+    const uint8_t yOffset = (this->lcd->getHeight() - 13 * 4) / 2;
 
     this->lcd->setFont(u8g2_font_spleen6x12_mf);
     this->lcd->setFontPosTop();
@@ -287,11 +287,11 @@ void UserInterface::showIntroMsg()
     label = String("DIY");
     this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, yOffset, label.c_str());
     label = String("C245/T12");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 12 + yOffset, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 13 + yOffset, label.c_str());
     label = String("SOLDERING STATION");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 12 * 2 + yOffset, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 13 * 2 + yOffset, label.c_str());
     label = String("By T.Temourtzidis");
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 12 * 3 + yOffset, label.c_str());
+    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, 13 * 3 + yOffset, label.c_str());
 
     this->lcd->sendBuffer();
 
@@ -305,9 +305,7 @@ void UserInterface::showSaveMsg()
     this->lcd->setFont(u8g2_font_spleen6x12_mf);
     this->lcd->setFontPosCenter();
     this->lcd->setDrawColor(1);
-
     this->lcd->clearBuffer();
-
     this->lcd->drawRFrame(0, 0, this->lcd->getWidth(), this->lcd->getHeight(), 8);
 
     if (this->iron->getConfig().changed)
@@ -316,10 +314,13 @@ void UserInterface::showSaveMsg()
     }
     else
     {
-        label = "Nothing to save!";
+        label = "No changes!";
     }
 
-    this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2, this->lcd->getHeight() / 2, label.c_str());
+    this->lcd->drawStr(
+        this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2,
+        this->lcd->getHeight() / 2,
+        label.c_str());
 
     this->lcd->sendBuffer();
 
@@ -340,10 +341,10 @@ void UserInterface::showDashboard()
 
     this->lcd->setDrawColor(1);
 
-    char ironTemp[10];
+    char ironTemp[4];
     char ironSetTemp[10];
     char ironOutput[10];
-    char tip[10];
+    char tip[4];
 
     if (this->iron->getStatus() == Iron::Status::STATUS_FAULT)
     {
@@ -353,6 +354,7 @@ void UserInterface::showDashboard()
     {
         sprintf(ironTemp, "%03d", (int)this->iron->getHeaterTemp());
     }
+
     sprintf(ironSetTemp, "%03d\u00B0C", (int)this->iron->getTargetTemp());
     sprintf(ironOutput, "%3d%%", (int)this->iron->getHeaterOutputPct());
     sprintf(tip, "%d", (int)(this->iron->getTip() + 1));
@@ -365,8 +367,6 @@ void UserInterface::showDashboard()
     this->lcd->setFont(u8g2_font_spleen8x16_mf);
     this->lcd->drawUTF8(15, 2, ironSetTemp);
     this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 15, 2, ironOutput);
-
-    // this->lcd->drawRFrame(16, 15, this->lcd->getWidth() - 32, this->lcd->getHeight() - 30, 8);
 
     this->lcd->setFont(u8g2_font_spleen6x12_mf);
     this->lcd->drawStr(18, 22, "TIP");
@@ -386,13 +386,13 @@ void UserInterface::showDashboard()
     switch (this->iron->getStatus())
     {
     case Iron::Status::STATUS_HEATING:
-        status = "HEATER ON";
+        status = "HEATING";
         break;
     case Iron::Status::STATUS_FAULT:
         status = "NO TIP";
         break;
     case Iron::Status::STATUS_OFF:
-        status = "HEATER OFF";
+        status = "COOLING";
         break;
     case Iron::Status::STATUS_SCREENSAVER:
     case Iron::Status::STATUS_SLEEP:
@@ -402,7 +402,9 @@ void UserInterface::showDashboard()
 
     this->lcd->setFont(u8g2_font_spleen8x16_mf);
     this->lcd->setFontPosTop();
-    this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(status.c_str())) / 2, this->lcd->getHeight() - 14);
+    this->lcd->setCursor(
+        (this->lcd->getWidth() - this->lcd->getStrWidth(status.c_str())) / 2,
+        this->lcd->getHeight() - 14);
     this->lcd->print(status);
 }
 
@@ -585,13 +587,13 @@ void UserInterface::showResetPage()
     String label = "Reset all settings";
     this->lcd->drawStr(
         this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2,
-        this->lcd->getHeight() / 2 - 10,
+        this->lcd->getHeight() / 2 - 8,
         label.c_str());
 
-    label = "to default?!";
+    label = "to default?";
     this->lcd->drawStr(
         this->lcd->getWidth() / 2 - this->lcd->getStrWidth(label.c_str()) / 2,
-        this->lcd->getHeight() / 2 + 2,
+        this->lcd->getHeight() / 2 + 4,
         label.c_str());
 
     label = "YES";
@@ -617,11 +619,18 @@ void UserInterface::drawTitle(String title)
     this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(title.c_str()) / 2, height / 2 + 2, title.c_str());
 
     String options = String(this->selectedOption + 1) + "/" + String(this->maxOptionCount + 1);
-    this->lcd->drawStr(2, height / 2 + 2, options.c_str());
+    this->lcd->drawStr(3, height / 2 + 2, options.c_str());
 
     if (this->selectedLevel == OPTION_SELECT || this->selectedLevel == OPTION_EDIT)
     {
-        this->drawOption("X", u8g2_font_spleen5x8_mf, this->lcd->getWidth() - 9, height / 2 + 1, 8, 1, this->selectedOption == 0);
+        this->drawOption(
+            "X",
+            u8g2_font_spleen5x8_mf,
+            this->lcd->getWidth() - 9,
+            height / 2 + 1,
+            8,
+            1,
+            this->selectedOption == 0);
         this->lcd->drawFrame(0, 0, this->lcd->getWidth(), this->lcd->getHeight());
     }
 

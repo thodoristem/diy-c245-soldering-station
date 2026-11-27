@@ -44,8 +44,7 @@ public:
         STATUS_OFF,
         STATUS_HEATING,
         STATUS_FAULT,
-        STATUS_SLEEP,
-        STATUS_SCREENSAVER // @todo Screen after a while
+        STATUS_SLEEP
     };
 
     enum SoundEvent : uint8_t
@@ -82,9 +81,9 @@ public:
         PID_KP_SET,
         PID_KI_SET,
         PID_KD_SET,
-        P_MODE,
-        D_MODE,
-        I_AW_MODE
+        P_MODE_SET,
+        D_MODE_SET,
+        I_AW_MODE_SET
     };
 
     enum OpAmpSettings : uint8_t
@@ -211,8 +210,8 @@ private:
 
     uint8_t tip = 0;
 
-    float targetTemp = 200.0f;
-    float wakeTemp = 200.0f;
+    float targetTemp = 0.0f;
+    float wakeTemp = 0.0f;
     bool disableSleep = false;
 
     bool invertedOutput = true;
