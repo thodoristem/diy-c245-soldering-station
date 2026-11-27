@@ -451,7 +451,7 @@ void UserInterface::showGeneralSettingsPage()
         this->viewInit = false;
     }
 
-    this->drawTitle("GENERAL SETTINGS");
+    this->drawTitle("GENERAL");
     this->drawSelect(Iron::SettingType::GENERAL_SETTINGS, GENERAL_SETTINGS_COUNT, this->maxOptionsVisible, 2, 22);
 }
 
@@ -507,7 +507,7 @@ void UserInterface::showCalPointsPage()
         this->selectedLevel = OPTION_SELECT;
     }
 
-    this->drawTitle("TIP-" + String(this->iron->getTip() + 1) + " CALIBRATION");
+    this->drawTitle("TIP-" + String(this->iron->getTip() + 1) + " CAL");
     bool selected = false;
     String label;
     uint8_t index = 0;
@@ -616,6 +616,9 @@ void UserInterface::drawTitle(String title)
     this->lcd->setFontPosCenter();
     this->lcd->drawStr(this->lcd->getWidth() / 2 - this->lcd->getStrWidth(title.c_str()) / 2, height / 2 + 2, title.c_str());
 
+    String options = String(this->selectedOption + 1) + "/" + String(this->maxOptionCount + 1);
+    this->lcd->drawStr(2, height / 2 + 2, options.c_str());
+
     if (this->selectedLevel == OPTION_SELECT || this->selectedLevel == OPTION_EDIT)
     {
         this->drawOption("X", u8g2_font_spleen5x8_mf, this->lcd->getWidth() - 9, height / 2 + 1, 8, 1, this->selectedOption == 0);
@@ -675,6 +678,48 @@ void UserInterface::drawSelect(Iron::SettingType settingType, uint8_t maxOptions
         else if (strcmp(unit.c_str(), "bool") == 0)
         {
             label += String((value == 1) ? "ON" : "OFF");
+        }
+        else if (strcmp(unit.c_str(), "pmode") == 0)
+        {
+            switch ((QuickPID::pMode)value)
+            {
+            case QuickPID::pMode::pOnError:
+                label += "ON ERROR";
+                break;
+            case QuickPID::pMode::pOnMeas:
+                label += "ON MEAS";
+                break;
+            case QuickPID::pMode::pOnErrorMeas:
+                label += "ON ERROR+MEAS";
+                break;
+            }
+        }
+        else if (strcmp(unit.c_str(), "dmode") == 0)
+        {
+            switch ((QuickPID::dMode)value)
+            {
+            case QuickPID::dMode::dOnError:
+                label += "ON ERROR";
+                break;
+            case QuickPID::dMode::dOnMeas:
+                label += "ON MEAS";
+                break;
+            }
+        }
+        else if (strcmp(unit.c_str(), "imode") == 0)
+        {
+            switch ((QuickPID::iAwMode)value)
+            {
+            case QuickPID::iAwMode::iAwCondition:
+                label += "CONDITION";
+                break;
+            case QuickPID::iAwMode::iAwClamp:
+                label += "CLAMP";
+                break;
+            case QuickPID::iAwMode::iAwOff:
+                label += "OFF";
+                break;
+            }
         }
         else if (decPlaces == 0)
         {

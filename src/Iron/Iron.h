@@ -23,7 +23,7 @@
 #define HEATER_CHECK_MIN_TEMP_RIZE 2.0f
 
 #define GENERAL_SETTINGS_COUNT 6
-#define PID_SETTINGS_COUNT 3
+#define PID_SETTINGS_COUNT 6
 #define OPAMP_SETTINGS_COUNT 3
 
 #define TIP_COUNT 5
@@ -32,7 +32,7 @@
 #define CAL_ORDER 3
 #define CAL_NCOEFFS CAL_ORDER + 1
 
-#define EEPROM_MAGIC 0xC245A001UL
+#define EEPROM_MAGIC 0xC245A000UL
 #define EEPROM_DATA_TYPE_COUNT 6
 #define EEPROM_DATA_SETTINGS_COUNT 10
 
@@ -81,7 +81,10 @@ public:
     {
         PID_KP_SET,
         PID_KI_SET,
-        PID_KD_SET
+        PID_KD_SET,
+        P_MODE,
+        D_MODE,
+        I_AW_MODE
     };
 
     enum OpAmpSettings : uint8_t
@@ -137,9 +140,12 @@ private:
         };
 
         Iron::Setting pidSettings[PID_SETTINGS_COUNT] = {
-            {"KP", 0.0f, 20.0f, 12.000f, 0.1f, 1, ""},
-            {"KI", 0.0f, 20.0f, 9.000f, 0.1f, 1, ""},
-            {"KD", 0.0f, 20.0f, 0.500f, 0.1f, 1, ""},
+            {"Kp", 0.0f, 20.0f, 12.0f, 0.1f, 1, ""},
+            {"Ki", 0.0f, 20.0f, 9.0f, 0.1f, 1, ""},
+            {"Kd", 0.0f, 20.0f, 0.5f, 0.1f, 1, ""},
+            {"PMode", 0, 2, 0, 1, 0, "pmode"},
+            {"DMode", 0, 1, 1, 1, 0, "dmode"},
+            {"IMode", 0, 2, 1, 1, 0, "imode"},
         };
 
         Iron::Setting opAmpSettings[OPAMP_SETTINGS_COUNT] = {
