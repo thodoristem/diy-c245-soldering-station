@@ -136,7 +136,7 @@ private:
             {"Temp Step", 1.0f, 50.0f, 10.0f, 1.0f, 0, "\u00B0C"},
             {"Max Output", 10.0f, 90.0f, 90.0f, 1.0f, 0, "%"},
             {"Initial Temp", 150.0f, 400.0f, 300.0f, 5.0f, 0, "\u00B0C"},
-            {"Sleep Temp", 150.0f, 250.0f, 150.0f, 5.0f, 0, "\u00B0C"},
+            {"Sleep Temp", 100.0f, 250.0f, 150.0f, 5.0f, 0, "\u00B0C"},
             {"Beeper", 0, 1, 0, 1, 0, "bool"},
         };
 

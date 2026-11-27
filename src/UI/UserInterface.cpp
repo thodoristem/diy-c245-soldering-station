@@ -207,8 +207,8 @@ void UserInterface::onLongPress()
         break;
     default:
         this->selectView(View::DASHBOARD);
-        this->iron->saveSettings();
         this->showSaveMsg();
+        this->iron->saveSettings();
         this->iron->init();
         break;
     }
