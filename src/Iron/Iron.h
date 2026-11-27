@@ -12,6 +12,8 @@
 #define PWM_BITS 10
 #define PWM_MAX 1023
 
+#define MAX_OUTPUT_PCT 90
+
 #define TEMP_MEASURE_SAMPLES_PER_SECOND 60
 #define TEMP_MEASURE_SAMPLES_TIME_MS 1000 / TEMP_MEASURE_SAMPLES_PER_SECOND
 #define TEMP_MEASURE_SAMPLES 30
@@ -210,15 +212,14 @@ private:
 
     uint8_t tip = 0;
 
-    float targetTemp = 0.0f;
-    float wakeTemp = 0.0f;
-    bool disableSleep = false;
-
     bool invertedOutput = true;
     float heaterOutput = 0.0f;
     float minOutput = 0.0f;
     float maxOutput;
 
+    bool disableSleep = false;
+    float targetTemp = 0.0f;
+    float wakeTemp = 0.0f;
     float heaterTempMV = 0.0f;
     float heaterTemp = 0.0f;
     float minTemp;
@@ -238,7 +239,7 @@ private:
 
     Configuration configuration;
     StoredData storedData;
-    bool _resetSettings = false;
+    bool resetEEPROM = false;
 
     void runPID();
     void readTemp();
@@ -264,6 +265,7 @@ public:
 
     void toggle();
     void sleep();
+    void dontSleep(bool b);
     void wake();
     void off();
     void on();

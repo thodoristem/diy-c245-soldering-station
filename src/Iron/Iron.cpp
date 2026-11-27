@@ -201,7 +201,7 @@ void Iron::init(bool loadSavedSettings)
     this->pid->SetSampleTimeUs(PID_SAMPLES_TIME_US);
 
     this->disableSleep = !loadSavedSettings;
-    this->setStatus(Status::STATUS_OFF);
+    this->off();
     this->sleep();
     this->playTone(SoundEvent::SOUND_INIT);
 }
@@ -276,6 +276,11 @@ void Iron::sleep()
     }
 }
 
+void Iron::dontSleep(bool b)
+{
+    this->disableSleep = b;
+}
+
 void Iron::wake()
 {
     if (this->disableSleep)
@@ -285,9 +290,7 @@ void Iron::wake()
 
     if (this->getStatus() == Iron::Status::STATUS_SLEEP)
     {
-        this->setTargetTemp(this->wakeTemp);
-        this->setStatus(Iron::Status::STATUS_HEATING);
-        this->playTone(SoundEvent::SOUND_HEATER_ON);
+        this->on();
     }
 }
 
@@ -315,10 +318,28 @@ uint8_t Iron::getTip()
     return this->tip;
 }
 
-void Iron::setOutputRange(float minPCT, float maxPCT)
+void Iron::setOutputRange(float minPct, float maxPct)
 {
-    this->minOutput = PWM_MAX / 100.0f * minPCT;
-    this->maxOutput = PWM_MAX / 100.0f * maxPCT;
+    if (minPct > maxPct)
+    {
+        minPct = 0;
+        maxPct = MAX_OUTPUT_PCT;
+    }
+    else
+    {
+        if (minPct < 0)
+        {
+            minPct = 0;
+        }
+
+        if (maxPct > MAX_OUTPUT_PCT)
+        {
+            maxPct = MAX_OUTPUT_PCT;
+        }
+    }
+
+    this->minOutput = PWM_MAX / 100.0f * minPct;
+    this->maxOutput = PWM_MAX / 100.0f * maxPct;
     this->pid->SetOutputLimits(this->minOutput, this->maxOutput);
 }
 
@@ -542,7 +563,7 @@ void Iron::loadSettings()
 
     this->eeprom->get(0, tempStoredData);
 
-    if (tempStoredData.magic != EEPROM_MAGIC || this->_resetSettings)
+    if (tempStoredData.magic != EEPROM_MAGIC || this->resetEEPROM)
     {
         this->configuration.changed = true;
         this->saveSettings();
@@ -579,7 +600,7 @@ void Iron::loadSettings()
 
 void Iron::resetSettings()
 {
-    this->_resetSettings = true;
+    this->resetEEPROM = true;
     this->init();
 }
 

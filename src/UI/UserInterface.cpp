@@ -125,7 +125,6 @@ void UserInterface::onPress()
         this->iron->toggle();
         break;
     case PAGE_SELECT:
-        this->iron->initCal();
         switch (this->selectedOption)
         {
         case 0:
@@ -150,10 +149,7 @@ void UserInterface::onPress()
         {
             this->selectedLevel = PAGE_SELECT;
             this->selectView(MENU);
-            if (this->iron->getConfig().changed)
-            {
-                this->iron->init(false);
-            }
+            this->iron->init(false);
         }
         else
         {
@@ -174,6 +170,7 @@ void UserInterface::onPress()
                 }
                 break;
             case PAGE_CAL_POINTS:
+                this->iron->initCal();
                 this->iron->setTargetTemp(this->iron->getCalPoint(this->selectedOption - 1).tempC);
                 this->iron->setStatus(Iron::Status::STATUS_HEATING);
                 break;
@@ -206,10 +203,10 @@ void UserInterface::onLongPress()
     case DASHBOARD:
         this->selectView(View::MENU);
         this->iron->off();
+        this->iron->dontSleep(true);
         break;
     default:
         this->selectView(View::DASHBOARD);
-        this->iron->off();
         this->iron->saveSettings();
         this->showSaveMsg();
         this->iron->init();
@@ -371,7 +368,7 @@ void UserInterface::showDashboard()
     this->lcd->setFont(u8g2_font_spleen6x12_mf);
     this->lcd->drawStr(18, 22, "TIP");
     this->lcd->drawStr(18 + (18 - this->lcd->getStrWidth(tip)) / 2, 32, tip);
-
+    
     this->lcd->setFont(u8g2_font_spleen16x32_mn);
     this->lcd->setFontPosCenter();
     this->lcd->setCursor((this->lcd->getWidth() - this->lcd->getStrWidth(ironTemp)) / 2, this->lcd->getHeight() / 2);
@@ -392,9 +389,8 @@ void UserInterface::showDashboard()
         status = "NO TIP";
         break;
     case Iron::Status::STATUS_OFF:
-        status = "COOLING";
+        status = "OFF";
         break;
-    case Iron::Status::STATUS_SCREENSAVER:
     case Iron::Status::STATUS_SLEEP:
         status = "SLEEP";
         break;
@@ -509,7 +505,7 @@ void UserInterface::showCalPointsPage()
         this->selectedLevel = OPTION_SELECT;
     }
 
-    this->drawTitle("TIP-" + String(this->iron->getTip() + 1) + " CAL");
+    this->drawTitle("TIP-" + String(this->iron->getTip() + 1) + " CALIB.");
     bool selected = false;
     String label;
     uint8_t index = 0;
