@@ -361,7 +361,7 @@ void UserInterface::showDashboard()
     this->drawLoadingBar(this->lcd->getWidth() - 13, 0, 13, this->lcd->getHeight(), this->iron->getHeaterOutputPct());
 
     this->lcd->setFontPosTop();
-    this->lcd->setFont(u8g2_font_spleen8x16_mf);
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
     this->lcd->drawUTF8(15, 2, ironSetTemp);
     this->lcd->drawUTF8(this->lcd->getWidth() - this->lcd->getStrWidth(ironOutput) - 15, 2, ironOutput);
 
@@ -375,7 +375,7 @@ void UserInterface::showDashboard()
     this->lcd->print(ironTemp);
 
     this->lcd->setFontPosTop();
-    this->lcd->setFont(u8g2_font_spleen8x16_mf);
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
     this->lcd->drawUTF8(this->lcd->getWidth() / 2 + 23, this->lcd->getHeight() / 2 - 10, "\u00B0C");
 
     String status;
@@ -396,7 +396,7 @@ void UserInterface::showDashboard()
         break;
     }
 
-    this->lcd->setFont(u8g2_font_spleen8x16_mf);
+    this->lcd->setFont(u8g2_font_spleen6x12_mf);
     this->lcd->setFontPosTop();
     this->lcd->setCursor(
         (this->lcd->getWidth() - this->lcd->getStrWidth(status.c_str())) / 2,

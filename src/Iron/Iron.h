@@ -24,7 +24,7 @@
 #define HEATER_CHECK_INTERVAL_MS 2000
 #define HEATER_CHECK_MIN_TEMP_RIZE 2.0f
 
-#define GENERAL_SETTINGS_COUNT 6
+#define GENERAL_SETTINGS_COUNT 9
 #define PID_SETTINGS_COUNT 6
 #define OPAMP_SETTINGS_COUNT 3
 
@@ -34,7 +34,7 @@
 #define CAL_ORDER 3
 #define CAL_NCOEFFS CAL_ORDER + 1
 
-#define EEPROM_MAGIC 0xC245A000UL
+#define EEPROM_MAGIC 0xC245A001UL
 #define EEPROM_DATA_TYPE_COUNT 6
 #define EEPROM_DATA_SETTINGS_COUNT 10
 
@@ -71,6 +71,9 @@ public:
     enum GeneralSettings : uint8_t
     {
         TIP_SET,
+        TEMP_PRESET_1_SET,
+        TEMP_PRESET_2_SET,
+        TEMP_PRESET_3_SET,
         TEMP_SELECT_STEP_SET,
         MAX_OUTPUT_PCT_SET,
         INITIAL_TEMP_SET,
@@ -133,6 +136,9 @@ private:
 
         Iron::Setting generalSettings[GENERAL_SETTINGS_COUNT] = {
             {"Tip", 0, TIP_COUNT, 0, 1, 0, "tip"},
+            {"Temp 1", 150.0f, 400.0f, 300.0f, 5.0f, 0, "\u00B0C"},
+            {"Temp 2", 150.0f, 400.0f, 330.0f, 5.0f, 0, "\u00B0C"},
+            {"Temp 3", 150.0f, 400.0f, 370.0f, 5.0f, 0, "\u00B0C"},
             {"Temp Step", 1.0f, 50.0f, 10.0f, 1.0f, 0, "\u00B0C"},
             {"Max Output", 10.0f, 90.0f, 90.0f, 1.0f, 0, "%"},
             {"Initial Temp", 150.0f, 400.0f, 300.0f, 5.0f, 0, "\u00B0C"},
